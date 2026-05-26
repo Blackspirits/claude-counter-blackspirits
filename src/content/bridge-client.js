@@ -2,6 +2,7 @@
 	'use strict';
 
 	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CLAUDE_ORIGIN = 'https://claude.ai';
 
 	function getRuntime() {
 		return globalThis.browser?.runtime || globalThis.chrome?.runtime || null;
@@ -17,7 +18,7 @@
 			this._listeners = new Map();
 
 			window.addEventListener('message', (event) => {
-				if (event.source !== window) return;
+				if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
 				const data = event.data;
 				if (!data || data.cc !== 'ClaudeCounter') return;
 
@@ -68,7 +69,7 @@
 						kind,
 						payload
 					},
-					'*'
+					CLAUDE_ORIGIN
 				);
 			});
 		}

@@ -1,50 +1,65 @@
-# Claude Counter
+# Claude Counter - BlackSpirits Edition
 
-A minimal browser extension that shows token count, cache timer, and usage bars on claude.ai.
+Fork pessoal do [Claude Counter](https://github.com/she-llac/claude-counter), focado em contagem aproximada de contexto e visibilidade dos limites do Claude no browser.
 
-![Claude Counter screenshot](./screenshot.png)
+> Mantém os créditos e a licença MIT do projeto original.
 
-## Features
+## O que mostra
 
-- **Token count** — Approximate token count for the current conversation, with a mini progress bar against the 200k context limit
-- **Cache timer** — Countdown showing how long the conversation remains cached (cheaper to continue)
-- **Usage bars** — Session (5-hour) and weekly (7-day) usage from Claude's native API, with progress bars and reset countdowns (more accurate than the rounded /usage page)
+- **Token count** — contagem aproximada dos tokens da conversa atual, com barra contra o limite de 200k.
+- **Cache timer** — tempo restante da cache da conversa.
+- **Usage bars** — uso da janela de 5 horas e da janela semanal a partir da API nativa do Claude.
+- **Reset time melhorado** — mostra a hora aproximada de reset e o tempo restante, por exemplo `resets at 18:05 (in 2h 10m)`.
+- **Melhor desempenho em background** — evita atualizar a UI a cada segundo quando o separador está oculto e atualiza ao voltar.
 
-## Installation
+## Instalação recomendada
 
-**Chrome / Edge / Chromium**
+### Chrome / Edge / Chromium
 
-1. Download [`claude-counter-0.4.2.zip`](../../releases/download/v0.4.2/claude-counter-0.4.2.zip)
-2. Go to `chrome://extensions` and enable **Developer mode**
-3. Drag and drop the zip onto the page
+1. Descarrega o ZIP desta versão.
+2. Extrai o ZIP para uma pasta fixa, por exemplo `C:\Tools\claude-counter-blackspirits`.
+3. Abre `chrome://extensions`.
+4. Ativa **Developer mode**.
+5. Clica em **Load unpacked** / **Carregar sem compactação**.
+6. Escolhe a pasta onde está o `manifest.json`.
 
-**Firefox**
+> Não apagues a pasta depois de carregar a extensão. O Chrome continua a ler os ficheiros daí.
 
-1. Download [`claude-counter-0.4.2.xpi`](../../releases/download/v0.4.2/claude-counter-0.4.2.xpi)
-2. Drag it into any Firefox window and click **Add**
+### Userscript
 
-**Userscript**
+Existe uma versão em `userscript/claude-counter.user.js`, mas a extensão é a opção recomendada. O userscript carrega o tokenizer via `@require` externo, enquanto a extensão inclui o tokenizer localmente.
 
-1. Install the userscript from [`claude-counter.user.js`](./userscript/claude-counter.user.js)
+## Privacidade
 
-## How it works
+- Não envia dados para servidores externos teus ou de terceiros.
+- Corre apenas em `https://claude.ai/*`.
+- Lê o cookie `lastActiveOrg` para consultar o endpoint `/usage` do Claude.
+- Faz pedidos apenas para `claude.ai`, usando a sessão já ativa no browser.
+- Não utiliza `chrome.storage`, `localStorage` ou histórico local nesta versão.
 
-- Intercepts Claude's API responses to read conversation data and usage info
-- Uses a vendored tokenizer (`o200k_base`) for approximate token counting
-- Uses Claude’s `/usage` plus live SSE `message_limit` data; the SSE provides exact, unrounded utilization fractions, so the progress bars are more accurate than the rounded percentages shown on Claude’s native /usage page
-- Watches for DOM changes to inject UI elements as you navigate
+## Limitações conhecidas
 
-## Privacy
+- A contagem de tokens é aproximada e pode divergir da contagem real do Claude.
+- Conversas com web search, ficheiros e outputs de ferramentas continuam a ser difíceis de contar com 100% de precisão.
+- Depois de compactação de contexto, a contagem visual pode deixar de representar o contexto real.
+- Esta extensão é para `claude.ai` no browser, não para Claude Desktop nem Claude Code no terminal.
 
-- All data stays local — no external servers, no tracking
-- Reads your `lastActiveOrg` cookie to query Claude's `/usage` endpoint
-- Makes requests only to `claude.ai`
+## Alterações BlackSpirits v0.4.3
 
-## Credits
+- Branding atualizado para `Claude Counter - BlackSpirits Edition`.
+- Aplicada a melhoria da PR #15: pausa os ticks de UI quando o separador está oculto e atualiza ao voltar.
+- Aplicada e melhorada a ideia da PR #14: hora de reset + countdown, em vez de apenas countdown.
+- Hardening de `postMessage`: origem limitada a `https://claude.ai`.
+- URLs internas passam a utilizar `encodeURIComponent` para `orgId` e `conversationId`.
+- Extração textual mais robusta para alguns outputs de ferramentas/web search.
+- Adicionado `SECURITY.md` e `CHANGELOG.md`.
 
+## Créditos
+
+- Projeto original: [she-llac/claude-counter](https://github.com/she-llac/claude-counter)
 - Token counting via [gpt-tokenizer](https://github.com/niieani/gpt-tokenizer) (MIT)
-- Inspired by [Claude Usage Tracker](https://github.com/lugia19/Claude-Usage-Extension) by lugia19
+- Inspirado por [Claude Usage Tracker](https://github.com/lugia19/Claude-Usage-Extension)
 
-## License
+## Licença
 
 MIT

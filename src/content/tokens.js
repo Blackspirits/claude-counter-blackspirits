@@ -29,6 +29,45 @@
 		}
 	}
 
+
+	function pickTextualPayload(value, depth = 0, seen = new WeakSet()) {
+		if (value === null || value === undefined || depth > 5) return '';
+		if (typeof value === 'string') return value;
+		if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+		if (typeof value !== 'object') return '';
+		if (seen.has(value)) return '';
+		seen.add(value);
+
+		if (Array.isArray(value)) {
+			return value.map((item) => pickTextualPayload(item, depth + 1, seen)).filter(Boolean).join('\n');
+		}
+
+		const preferredKeys = [
+			'text',
+			'title',
+			'summary',
+			'snippet',
+			'content',
+			'extracted_content',
+			'page_content',
+			'query',
+			'url',
+			'name',
+			'description',
+			'result',
+			'results',
+			'citations'
+		];
+		const parts = [];
+		for (const key of preferredKeys) {
+			if (Object.prototype.hasOwnProperty.call(value, key)) {
+				const part = pickTextualPayload(value[key], depth + 1, seen);
+				if (part) parts.push(`${key}: ${part}`);
+			}
+		}
+		return parts.join('\n');
+	}
+
 	function getTokenizer() {
 		return globalThis.GPTTokenizer_o200k_base || null;
 	}
@@ -92,23 +131,19 @@
 		}
 
 		if (item.type === 'tool_result') {
+			const textualPayload = pickTextualPayload(item.content);
 			const minimal = {
 				tool_use_id: item.tool_use_id,
 				is_error: item.is_error,
-				content: item.content
+				content: textualPayload || item.content
 			};
 			return stableStringify(minimal);
 		}
 
-		// Fallback: keep only known-ish textual fields to avoid pulling in huge binary-ish blobs.
-		const minimal = {};
-		if (typeof item.text === 'string') minimal.text = item.text;
-		if (typeof item.title === 'string') minimal.title = item.title;
-		if (typeof item.url === 'string') minimal.url = item.url;
-		if (typeof item.content === 'string') minimal.content = item.content;
-		if (Array.isArray(item.content)) minimal.content = item.content;
-		if (Object.keys(minimal).length === 0) return '';
-		return stableStringify(minimal);
+		// Fallback: keep known textual payloads from web-search/tool blocks without pulling binary blobs.
+		const textualPayload = pickTextualPayload(item);
+		if (textualPayload) return textualPayload;
+		return '';
 	}
 
 	function stringifyMessageCountables(message) {

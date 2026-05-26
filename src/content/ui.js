@@ -33,6 +33,36 @@
 		return `${days}d ${remHours}h`;
 	}
 
+
+	function formatResetTime(timestampMs) {
+		if (!timestampMs) return '';
+
+		// Claude's native usage UI is rounded, so keep display stable around 5-minute boundaries.
+		const fiveMinutesMs = 5 * 60 * 1000;
+		const resetDate = new Date(Math.round(timestampMs / fiveMinutesMs) * fiveMinutesMs);
+		const now = new Date();
+		const diffMs = resetDate.getTime() - now.getTime();
+
+		const timeText = resetDate.toLocaleTimeString([], {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+
+		const sameDay = resetDate.toDateString() === now.toDateString();
+		if (sameDay || diffMs < 24 * 60 * 60 * 1000) return timeText;
+
+		return `${resetDate.toLocaleDateString([], {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric'
+		})} ${timeText}`;
+	}
+
+	function formatResetLabel(timestampMs) {
+		if (!timestampMs) return '';
+		return ` · resets at ${formatResetTime(timestampMs)} (in ${formatResetCountdown(timestampMs)})`;
+	}
+
 	function setupTooltip(element, tooltip, { topOffset = 10 } = {}) {
 		if (!element || !tooltip) return;
 		if (element.hasAttribute('data-tooltip-setup')) return;
@@ -465,7 +495,7 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.sessionResetMs = session.resets_at ? Date.parse(session.resets_at) : null;
 				this.sessionWindowStartMs = this.sessionResetMs ? this.sessionResetMs - 5 * 60 * 60 * 1000 : null;
-				const resetText = this.sessionResetMs ? ` · resets in ${formatResetCountdown(this.sessionResetMs)}` : '';
+				const resetText = this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : '';
 				this.sessionUsageSpan.textContent = `Session: ${pct}%${resetText}`;
 
 				const width = Math.max(0, Math.min(100, rawPct));
@@ -492,7 +522,7 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.weeklyResetMs = weekly.resets_at ? Date.parse(weekly.resets_at) : null;
 				this.weeklyWindowStartMs = this.weeklyResetMs ? this.weeklyResetMs - 7 * 24 * 60 * 60 * 1000 : null;
-				const resetText = this.weeklyResetMs ? ` · resets in ${formatResetCountdown(this.weeklyResetMs)}` : '';
+				const resetText = this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : '';
 				this.weeklyUsageSpan.textContent = `Weekly: ${pct}%${resetText}`;
 
 				const width = Math.max(0, Math.min(100, rawPct));
@@ -554,18 +584,18 @@
 
 			// Reset countdown text + time markers
 			if (this.sessionResetMs && this.sessionUsageSpan?.textContent) {
-				const idx = this.sessionUsageSpan.textContent.indexOf('· resets in');
+				const idx = this.sessionUsageSpan.textContent.indexOf(' · resets');
 				if (idx !== -1) {
-					const prefix = this.sessionUsageSpan.textContent.slice(0, idx + '· resets in '.length);
-					this.sessionUsageSpan.textContent = `${prefix}${formatResetCountdown(this.sessionResetMs)}`;
+					const prefix = this.sessionUsageSpan.textContent.slice(0, idx);
+					this.sessionUsageSpan.textContent = `${prefix}${formatResetLabel(this.sessionResetMs)}`;
 				}
 			}
 
 			if (this.weeklyResetMs && this.weeklyUsageSpan?.textContent) {
-				const idx = this.weeklyUsageSpan.textContent.indexOf('· resets in');
+				const idx = this.weeklyUsageSpan.textContent.indexOf(' · resets');
 				if (idx !== -1) {
-					const prefix = this.weeklyUsageSpan.textContent.slice(0, idx + '· resets in '.length);
-					this.weeklyUsageSpan.textContent = `${prefix}${formatResetCountdown(this.weeklyResetMs)}`;
+					const prefix = this.weeklyUsageSpan.textContent.slice(0, idx);
+					this.weeklyUsageSpan.textContent = `${prefix}${formatResetLabel(this.weeklyResetMs)}`;
 				}
 			}
 

@@ -1,8 +1,10 @@
 // ==UserScript==
-// @name         Claude Counter
-// @namespace    https://github.com/she-llac/claude-counter
-// @version      0.4.2-userscript
-// @description  Shows token count, cache timer, and usage bars on claude.ai.
+// @name         Claude Counter - BlackSpirits Edition
+// @namespace    blackspirits.github.io/
+// @version      0.4.3-userscript
+// @description  Privacy-focused Claude usage and context counter for claude.ai.
+// @author       BlackSpirits
+// @license      MIT
 // @match        https://claude.ai/*
 // @run-at       document-start
 // @grant        none
@@ -204,6 +206,45 @@
 		}
 	}
 
+
+	function pickTextualPayload(value, depth = 0, seen = new WeakSet()) {
+		if (value === null || value === undefined || depth > 5) return '';
+		if (typeof value === 'string') return value;
+		if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+		if (typeof value !== 'object') return '';
+		if (seen.has(value)) return '';
+		seen.add(value);
+
+		if (Array.isArray(value)) {
+			return value.map((item) => pickTextualPayload(item, depth + 1, seen)).filter(Boolean).join('\n');
+		}
+
+		const preferredKeys = [
+			'text',
+			'title',
+			'summary',
+			'snippet',
+			'content',
+			'extracted_content',
+			'page_content',
+			'query',
+			'url',
+			'name',
+			'description',
+			'result',
+			'results',
+			'citations'
+		];
+		const parts = [];
+		for (const key of preferredKeys) {
+			if (Object.prototype.hasOwnProperty.call(value, key)) {
+				const part = pickTextualPayload(value[key], depth + 1, seen);
+				if (part) parts.push(`${key}: ${part}`);
+			}
+		}
+		return parts.join('\n');
+	}
+
 	function getTokenizer() {
 		return globalThis.GPTTokenizer_o200k_base || null;
 	}
@@ -267,23 +308,19 @@
 		}
 
 		if (item.type === 'tool_result') {
+			const textualPayload = pickTextualPayload(item.content);
 			const minimal = {
 				tool_use_id: item.tool_use_id,
 				is_error: item.is_error,
-				content: item.content
+				content: textualPayload || item.content
 			};
 			return stableStringify(minimal);
 		}
 
-		// Fallback: keep only known-ish textual fields to avoid pulling in huge binary-ish blobs.
-		const minimal = {};
-		if (typeof item.text === 'string') minimal.text = item.text;
-		if (typeof item.title === 'string') minimal.title = item.title;
-		if (typeof item.url === 'string') minimal.url = item.url;
-		if (typeof item.content === 'string') minimal.content = item.content;
-		if (Array.isArray(item.content)) minimal.content = item.content;
-		if (Object.keys(minimal).length === 0) return '';
-		return stableStringify(minimal);
+		// Fallback: keep known textual payloads from web-search/tool blocks without pulling binary blobs.
+		const textualPayload = pickTextualPayload(item);
+		if (textualPayload) return textualPayload;
+		return '';
 	}
 
 	function stringifyMessageCountables(message) {
@@ -420,6 +457,36 @@
 		const days = Math.floor(hours / 24);
 		const remHours = hours % 24;
 		return `${days}d ${remHours}h`;
+	}
+
+
+	function formatResetTime(timestampMs) {
+		if (!timestampMs) return '';
+
+		// Claude's native usage UI is rounded, so keep display stable around 5-minute boundaries.
+		const fiveMinutesMs = 5 * 60 * 1000;
+		const resetDate = new Date(Math.round(timestampMs / fiveMinutesMs) * fiveMinutesMs);
+		const now = new Date();
+		const diffMs = resetDate.getTime() - now.getTime();
+
+		const timeText = resetDate.toLocaleTimeString([], {
+			hour: '2-digit',
+			minute: '2-digit'
+		});
+
+		const sameDay = resetDate.toDateString() === now.toDateString();
+		if (sameDay || diffMs < 24 * 60 * 60 * 1000) return timeText;
+
+		return `${resetDate.toLocaleDateString([], {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric'
+		})} ${timeText}`;
+	}
+
+	function formatResetLabel(timestampMs) {
+		if (!timestampMs) return '';
+		return ` · resets at ${formatResetTime(timestampMs)} (in ${formatResetCountdown(timestampMs)})`;
 	}
 
 	function setupTooltip(element, tooltip, { topOffset = 10 } = {}) {
@@ -854,7 +921,7 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.sessionResetMs = session.resets_at ? Date.parse(session.resets_at) : null;
 				this.sessionWindowStartMs = this.sessionResetMs ? this.sessionResetMs - 5 * 60 * 60 * 1000 : null;
-				const resetText = this.sessionResetMs ? ` · resets in ${formatResetCountdown(this.sessionResetMs)}` : '';
+				const resetText = this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : '';
 				this.sessionUsageSpan.textContent = `Session: ${pct}%${resetText}`;
 
 				const width = Math.max(0, Math.min(100, rawPct));
@@ -881,7 +948,7 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.weeklyResetMs = weekly.resets_at ? Date.parse(weekly.resets_at) : null;
 				this.weeklyWindowStartMs = this.weeklyResetMs ? this.weeklyResetMs - 7 * 24 * 60 * 60 * 1000 : null;
-				const resetText = this.weeklyResetMs ? ` · resets in ${formatResetCountdown(this.weeklyResetMs)}` : '';
+				const resetText = this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : '';
 				this.weeklyUsageSpan.textContent = `Weekly: ${pct}%${resetText}`;
 
 				const width = Math.max(0, Math.min(100, rawPct));
@@ -943,18 +1010,18 @@
 
 			// Reset countdown text + time markers
 			if (this.sessionResetMs && this.sessionUsageSpan?.textContent) {
-				const idx = this.sessionUsageSpan.textContent.indexOf('· resets in');
+				const idx = this.sessionUsageSpan.textContent.indexOf(' · resets');
 				if (idx !== -1) {
-					const prefix = this.sessionUsageSpan.textContent.slice(0, idx + '· resets in '.length);
-					this.sessionUsageSpan.textContent = `${prefix}${formatResetCountdown(this.sessionResetMs)}`;
+					const prefix = this.sessionUsageSpan.textContent.slice(0, idx);
+					this.sessionUsageSpan.textContent = `${prefix}${formatResetLabel(this.sessionResetMs)}`;
 				}
 			}
 
 			if (this.weeklyResetMs && this.weeklyUsageSpan?.textContent) {
-				const idx = this.weeklyUsageSpan.textContent.indexOf('· resets in');
+				const idx = this.weeklyUsageSpan.textContent.indexOf(' · resets');
 				if (idx !== -1) {
-					const prefix = this.weeklyUsageSpan.textContent.slice(0, idx + '· resets in '.length);
-					this.weeklyUsageSpan.textContent = `${prefix}${formatResetCountdown(this.weeklyResetMs)}`;
+					const prefix = this.weeklyUsageSpan.textContent.slice(0, idx);
+					this.weeklyUsageSpan.textContent = `${prefix}${formatResetLabel(this.weeklyResetMs)}`;
 				}
 			}
 
@@ -1108,7 +1175,8 @@
 
 	async function requestUsage(orgId) {
 		if (!originalFetch) return null;
-		const res = await originalFetch(`https://claude.ai/api/organizations/${orgId}/usage`, {
+		const safeOrgId = encodeURIComponent(orgId);
+		const res = await originalFetch(`https://claude.ai/api/organizations/${safeOrgId}/usage`, {
 			method: 'GET',
 			credentials: 'include'
 		});
@@ -1117,7 +1185,9 @@
 
 	async function requestConversation(orgId, conversationId) {
 		if (!originalFetch) return null;
-		const url = `https://claude.ai/api/organizations/${orgId}/chat_conversations/${conversationId}?tree=true&rendering_mode=messages&render_all_tools=true`;
+		const safeOrgId = encodeURIComponent(orgId);
+		const safeConversationId = encodeURIComponent(conversationId);
+		const url = `https://claude.ai/api/organizations/${safeOrgId}/chat_conversations/${safeConversationId}?tree=true&rendering_mode=messages&render_all_tools=true`;
 		const res = await originalFetch(url, {
 			method: 'GET',
 			credentials: 'include'
@@ -1206,7 +1276,7 @@
 	}
 
 	function tick() {
-		ui.tick();
+		if (!document.hidden) ui.tick();
 
 		const now = Date.now();
 		if (usageResetMs.five_hour && now >= usageResetMs.five_hour && rolloverHandledForResetMs.five_hour !== usageResetMs.five_hour) {
@@ -1226,6 +1296,23 @@
 		}
 	}
 
+
+	let hiddenSinceMs = null;
+	function handleVisibilityChange() {
+		if (document.hidden) {
+			hiddenSinceMs = Date.now();
+			return;
+		}
+
+		ui.tick();
+		const STALE_THRESHOLD_MS = 5 * 60 * 1000;
+		if (hiddenSinceMs !== null && Date.now() - hiddenSinceMs > STALE_THRESHOLD_MS) {
+			refreshUsage();
+			if (currentConversationId) refreshConversation();
+		}
+		hiddenSinceMs = null;
+	}
+
 	function start() {
 		injectStyles();
 		ui.initialize();
@@ -1233,6 +1320,7 @@
 		CC._ccInternal.onConversationData = handleConversationPayload;
 		CC._ccInternal.onMessageLimit = handleMessageLimit;
 		CC._ccInternal.onUrlChange = handleUrlChange;
+		document.addEventListener('visibilitychange', handleVisibilityChange);
 
 		handleUrlChange();
 		setInterval(tick, 1000);

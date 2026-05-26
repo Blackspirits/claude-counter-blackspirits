@@ -2,6 +2,7 @@
 	'use strict';
 
 	const CC_MARKER = 'ClaudeCounter';
+	const CLAUDE_ORIGIN = 'https://claude.ai';
 
 	// Capture original fetch before anyone else can wrap it
 	const originalFetch = window.fetch;
@@ -50,7 +51,7 @@
 	};
 
 	function post(type, payload) {
-		window.postMessage({ cc: CC_MARKER, type, payload }, '*');
+		window.postMessage({ cc: CC_MARKER, type, payload }, CLAUDE_ORIGIN);
 	}
 
 	function postResponse(requestId, ok, payload, error) {
@@ -63,7 +64,7 @@
 				payload,
 				error
 			},
-			'*'
+			CLAUDE_ORIGIN
 		);
 	}
 
@@ -128,7 +129,7 @@
 	}
 
 	window.addEventListener('message', async (event) => {
-		if (event.source !== window) return;
+		if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
 		const data = event.data;
 		if (!data || data.cc !== CC_MARKER) return;
 		if (data.type !== 'cc:request') return;
@@ -151,7 +152,8 @@
 			if (kind === 'usage') {
 				const orgId = payload?.orgId;
 				if (!orgId) throw new Error('Missing orgId');
-				const res = await originalFetch(`https://claude.ai/api/organizations/${orgId}/usage`, {
+				const safeOrgId = encodeURIComponent(orgId);
+				const res = await originalFetch(`https://claude.ai/api/organizations/${safeOrgId}/usage`, {
 					method: 'GET',
 					credentials: 'include'
 				});
@@ -165,7 +167,9 @@
 				const conversationId = payload?.conversationId;
 				if (!orgId || !conversationId) throw new Error('Missing orgId/conversationId');
 
-				const url = `https://claude.ai/api/organizations/${orgId}/chat_conversations/${conversationId}?tree=true&rendering_mode=messages&render_all_tools=true`;
+				const safeOrgId = encodeURIComponent(orgId);
+				const safeConversationId = encodeURIComponent(conversationId);
+				const url = `https://claude.ai/api/organizations/${safeOrgId}/chat_conversations/${safeConversationId}?tree=true&rendering_mode=messages&render_all_tools=true`;
 				const res = await originalFetch(url, {
 					method: 'GET',
 					credentials: 'include'
