@@ -139,3 +139,21 @@ O userscript continua incluído, mas carrega o tokenizer via `@require` externo.
 
 - O seletor de idioma passou a recolher para um botão curto (`PT`, `EN`, `FR`, etc.) após seleção.
 - Não foram adicionadas permissões novas nem armazenamento adicional.
+
+## v0.4.8 additional review
+
+- Root documentation was split so `README.md` is English-first and `README.pt-PT.md` contains the Portuguese Portugal version.
+- The extension namespace was isolated further:
+  - global object: `ClaudeCounterBlackSpirits`;
+  - bridge marker: `ClaudeCounterBlackSpirits`;
+  - message payload property: `ccbs`;
+  - internal events: `ccbs:*`;
+  - bridge script id: `ccbs-bridge-script`;
+  - CSS classes: `ccbs-*`.
+- Removed Firefox-specific manifest metadata because Firefox/AMO packaging has not been tested.
+- Improved bridge URL normalization with `new URL(..., https://claude.ai)`.
+- Added safe decoding for organization and conversation IDs captured from Claude API URLs.
+- Improved SSE parsing to process a final buffered line if the stream ends without a trailing newline.
+- Added stale-org protection for in-flight usage requests.
+- Added repository hygiene files: `.editorconfig`, `.gitattributes`, `CONTRIBUTING.md`.
+- Validation now checks version alignment, permission profile, namespace isolation, web-accessible resources and README language split.

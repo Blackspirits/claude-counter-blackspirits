@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         Claude Counter - BlackSpirits Edition
+// @name         Claude Counter - BlackSpirits Edition (Legacy Userscript)
 // @namespace    blackspirits.github.io/
-// @version      0.4.6-legacy
+// @version      0.4.8-legacy
 // @description  Legacy standalone Claude usage/context counter. Extension build is recommended for BlackSpirits Edition features.
 // @author       BlackSpirits
 // @license      MIT

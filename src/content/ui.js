@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 
 	function formatSeconds(totalSeconds) {
 		const minutes = Math.floor(totalSeconds / 60);
@@ -71,7 +71,7 @@
 		if (!element || !tooltip) return;
 		if (element.hasAttribute('data-tooltip-setup')) return;
 		element.setAttribute('data-tooltip-setup', 'true');
-		element.classList.add('cc-tooltipTrigger');
+		element.classList.add('ccbs-tooltipTrigger');
 
 		let pressTimer;
 		let hideTimer;
@@ -124,7 +124,7 @@
 
 	function makeTooltip(text) {
 		const tip = document.createElement('div');
-		tip.className = 'bg-bg-500 text-text-000 cc-tooltip';
+		tip.className = 'bg-bg-500 text-text-000 ccbs-tooltip';
 		tip.textContent = text;
 		document.body.appendChild(tip);
 		return tip;
@@ -189,10 +189,10 @@
 
 			const applyBarChrome = (bar, { fillWarn } = {}) => {
 				if (!bar) return;
-				bar.style.setProperty('--cc-stroke', strokeColor);
-				bar.style.setProperty('--cc-fill', fillColor);
-				bar.style.setProperty('--cc-fill-warn', fillWarn ?? fillColor);
-				bar.style.setProperty('--cc-marker', markerColor);
+				bar.style.setProperty('--ccbs-stroke', strokeColor);
+				bar.style.setProperty('--ccbs-fill', fillColor);
+				bar.style.setProperty('--ccbs-fill-warn', fillWarn ?? fillColor);
+				bar.style.setProperty('--ccbs-marker', markerColor);
 			};
 
 			applyBarChrome(this.lengthBar, { fillWarn: fillColor });
@@ -203,10 +203,10 @@
 		initialize() {
 			// Header container (tokens + cache timer)
 			this.headerContainer = document.createElement('div');
-			this.headerContainer.className = 'text-text-500 text-xs !px-1 cc-header';
+			this.headerContainer.className = 'text-text-500 text-xs !px-1 ccbs-header';
 
 			this.headerDisplay = document.createElement('span');
-			this.headerDisplay.className = 'cc-headerItem';
+			this.headerDisplay.className = 'ccbs-headerItem';
 
 			this.lengthGroup = document.createElement('span');
 			this.lengthDisplay = document.createElement('span');
@@ -222,7 +222,7 @@
 			this._setupTooltips();
 			this._observeDom();
 			this._observeTheme();
-			window.addEventListener('cc:languagechange', () => this._applyLanguage());
+			window.addEventListener('ccbs:languagechange', () => this._applyLanguage());
 		}
 
 		_observeTheme() {
@@ -262,45 +262,45 @@
 		_initUsageLine() {
 			this.usageLine = document.createElement('div');
 			this.usageLine.className =
-				'text-text-400 text-[11px] cc-usageRow cc-hidden flex flex-row items-center gap-3 w-full';
+				'text-text-400 text-[11px] ccbs-usageRow ccbs-hidden flex flex-row items-center gap-3 w-full';
 			this.usageLine.tabIndex = 0;
 			this.usageLine.setAttribute('role', 'button');
 			this.usageLine.title = CC.i18n.t('refreshUsageTitle');
 			this.usageLine.setAttribute('aria-label', CC.i18n.t('refreshUsageTitle'));
 
 			this.sessionUsageSpan = document.createElement('span');
-			this.sessionUsageSpan.className = 'cc-usageText';
+			this.sessionUsageSpan.className = 'ccbs-usageText';
 
 			this.sessionBar = document.createElement('div');
-			this.sessionBar.className = 'cc-bar cc-bar--usage';
+			this.sessionBar.className = 'ccbs-bar ccbs-bar--usage';
 			this.sessionBarFill = document.createElement('div');
-			this.sessionBarFill.className = 'cc-bar__fill';
+			this.sessionBarFill.className = 'ccbs-bar__fill';
 			this.sessionMarker = document.createElement('div');
-			this.sessionMarker.className = 'cc-bar__marker cc-hidden';
+			this.sessionMarker.className = 'ccbs-bar__marker ccbs-hidden';
 			this.sessionMarker.style.left = '0%';
 			this.sessionBar.appendChild(this.sessionBarFill);
 			this.sessionBar.appendChild(this.sessionMarker);
 
 			this.weeklyUsageSpan = document.createElement('span');
-			this.weeklyUsageSpan.className = 'cc-usageText';
+			this.weeklyUsageSpan.className = 'ccbs-usageText';
 
 			this.weeklyBar = document.createElement('div');
-			this.weeklyBar.className = 'cc-bar cc-bar--usage';
+			this.weeklyBar.className = 'ccbs-bar ccbs-bar--usage';
 			this.weeklyBarFill = document.createElement('div');
-			this.weeklyBarFill.className = 'cc-bar__fill';
+			this.weeklyBarFill.className = 'ccbs-bar__fill';
 			this.weeklyMarker = document.createElement('div');
-			this.weeklyMarker.className = 'cc-bar__marker cc-hidden';
+			this.weeklyMarker.className = 'ccbs-bar__marker ccbs-hidden';
 			this.weeklyMarker.style.left = '0%';
 			this.weeklyBar.appendChild(this.weeklyBarFill);
 			this.weeklyBar.appendChild(this.weeklyMarker);
 
 			this.sessionGroup = document.createElement('div');
-			this.sessionGroup.className = 'cc-usageGroup';
+			this.sessionGroup.className = 'ccbs-usageGroup';
 			this.sessionGroup.appendChild(this.sessionUsageSpan);
 			this.sessionGroup.appendChild(this.sessionBar);
 
 			this.weeklyGroup = document.createElement('div');
-			this.weeklyGroup.className = 'cc-usageGroup cc-usageGroup--weekly';
+			this.weeklyGroup.className = 'ccbs-usageGroup ccbs-usageGroup--weekly';
 			this.weeklyGroup.appendChild(this.weeklyBar);
 			this.weeklyGroup.appendChild(this.weeklyUsageSpan);
 
@@ -323,11 +323,11 @@
 		async _refreshUsageFromUi() {
 			if (!this.onUsageRefresh || this.refreshingUsage) return;
 			this.refreshingUsage = true;
-			this.usageLine.classList.add('cc-usageRow--dim');
+			this.usageLine.classList.add('ccbs-usageRow--dim');
 			try {
 				await this.onUsageRefresh();
 			} finally {
-				this.usageLine.classList.remove('cc-usageRow--dim');
+				this.usageLine.classList.remove('ccbs-usageRow--dim');
 				this.refreshingUsage = false;
 			}
 		}
@@ -348,24 +348,24 @@
 
 		_setLanguageSwitcherOpen(open) {
 			if (!this.languageSwitcher || !this.languageChip) return;
-			this.languageSwitcher.classList.toggle('cc-langSwitcher--open', Boolean(open));
+			this.languageSwitcher.classList.toggle('ccbs-langSwitcher--open', Boolean(open));
 			this.languageChip.setAttribute('aria-expanded', String(Boolean(open)));
 		}
 
 		_createLanguageSwitcher() {
 			const wrapper = document.createElement('span');
-			wrapper.className = 'cc-langSwitcher';
+			wrapper.className = 'ccbs-langSwitcher';
 			wrapper.addEventListener('click', (e) => e.stopPropagation());
 			wrapper.addEventListener('keydown', (e) => e.stopPropagation());
 
 			this.languageChip = document.createElement('button');
 			this.languageChip.type = 'button';
-			this.languageChip.className = 'cc-langChip';
+			this.languageChip.className = 'ccbs-langChip';
 			this.languageChip.setAttribute('aria-haspopup', 'listbox');
 			this.languageChip.setAttribute('aria-expanded', 'false');
 
 			const select = document.createElement('select');
-			select.className = 'cc-langSelect';
+			select.className = 'ccbs-langSelect';
 
 			const autoOption = document.createElement('option');
 			autoOption.value = 'auto';
@@ -393,7 +393,7 @@
 			});
 
 			this.languageChip.addEventListener('click', () => {
-				const open = !wrapper.classList.contains('cc-langSwitcher--open');
+				const open = !wrapper.classList.contains('ccbs-langSwitcher--open');
 				this._setLanguageSwitcherOpen(open);
 				if (!open) return;
 				select.focus();
@@ -545,10 +545,10 @@
 			} else {
 				this.lengthDisplay.style.opacity = '';
 				const bar = document.createElement('div');
-				bar.className = 'cc-bar cc-bar--mini';
+				bar.className = 'ccbs-bar ccbs-bar--mini';
 				this.lengthBar = bar;
 				const fill = document.createElement('div');
-				fill.className = 'cc-bar__fill';
+				fill.className = 'ccbs-bar__fill';
 				fill.style.width = `${pct}%`;
 				bar.appendChild(fill);
 				this.refreshProgressChrome();
@@ -567,7 +567,7 @@
 				const secondsLeft = Math.max(0, Math.ceil((cachedUntil - now) / 1000));
 				const { boldColor } = this.getProgressChrome();
 				this.cacheTimeSpan = Object.assign(document.createElement('span'), {
-					className: 'cc-cacheTime',
+					className: 'ccbs-cacheTime',
 					textContent: formatSeconds(secondsLeft)
 				});
 				this.cacheTimeSpan.style.color = boldColor;
@@ -610,7 +610,7 @@
 			const weekly = usage?.seven_day || null;
 			const hasAnyUsage =
 				!!(session && typeof session.utilization === 'number') || !!(weekly && typeof weekly.utilization === 'number');
-			this.usageLine?.classList.toggle('cc-hidden', !hasAnyUsage);
+			this.usageLine?.classList.toggle('ccbs-hidden', !hasAnyUsage);
 
 			if (session && typeof session.utilization === 'number') {
 				const rawPct = session.utilization;
@@ -623,23 +623,23 @@
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.sessionBarFill.style.width = `${width}%`;
-				this.sessionBarFill.classList.toggle('cc-warn', width >= 90);
-				this.sessionBarFill.classList.toggle('cc-full', width >= 99.5);
+				this.sessionBarFill.classList.toggle('ccbs-warn', width >= 90);
+				this.sessionBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
 				this.sessionUsageSpan.textContent = '';
 				this.sessionBarFill.style.width = '0%';
-				this.sessionBarFill.classList.remove('cc-warn', 'cc-full');
+				this.sessionBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 				this.sessionResetMs = null;
 				this.sessionWindowStartMs = null;
 			}
 
 			const hasWeekly = weekly && typeof weekly.utilization === 'number';
-			this.weeklyGroup?.classList.toggle('cc-hidden', !hasWeekly);
-			this.sessionGroup?.classList.toggle('cc-usageGroup--single', !hasWeekly);
+			this.weeklyGroup?.classList.toggle('ccbs-hidden', !hasWeekly);
+			this.sessionGroup?.classList.toggle('ccbs-usageGroup--single', !hasWeekly);
 
 			if (hasWeekly) {
-				this.weeklyUsageSpan.classList.remove('cc-hidden');
-				this.weeklyBar.classList.remove('cc-hidden');
+				this.weeklyUsageSpan.classList.remove('ccbs-hidden');
+				this.weeklyBar.classList.remove('ccbs-hidden');
 
 				const rawPct = weekly.utilization;
 				const pct = Math.round(rawPct * 10) / 10;
@@ -651,14 +651,14 @@
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.weeklyBarFill.style.width = `${width}%`;
-				this.weeklyBarFill.classList.toggle('cc-warn', width >= 90);
-				this.weeklyBarFill.classList.toggle('cc-full', width >= 99.5);
+				this.weeklyBarFill.classList.toggle('ccbs-warn', width >= 90);
+				this.weeklyBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
-				this.weeklyUsageSpan.classList.add('cc-hidden');
-				this.weeklyBar.classList.add('cc-hidden');
+				this.weeklyUsageSpan.classList.add('ccbs-hidden');
+				this.weeklyBar.classList.add('ccbs-hidden');
 				this.weeklyResetMs = null;
 				this.weeklyWindowStartMs = null;
-				this.weeklyBarFill.classList.remove('cc-warn', 'cc-full');
+				this.weeklyBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 			}
 
 			this._updateMarkers();
@@ -672,10 +672,10 @@
 				const elapsed = Math.max(0, Math.min(total, now - this.sessionWindowStartMs));
 				const ratio = total > 0 ? elapsed / total : 0;
 				const pct = Math.max(0, Math.min(100, ratio * 100));
-				this.sessionMarker.classList.remove('cc-hidden');
+				this.sessionMarker.classList.remove('ccbs-hidden');
 				this.sessionMarker.style.left = `${pct}%`;
 			} else if (this.sessionMarker) {
-				this.sessionMarker.classList.add('cc-hidden');
+				this.sessionMarker.classList.add('ccbs-hidden');
 			}
 
 			if (this.weeklyMarker && this.weeklyWindowStartMs && this.weeklyResetMs) {
@@ -683,10 +683,10 @@
 				const elapsed = Math.max(0, Math.min(total, now - this.weeklyWindowStartMs));
 				const ratio = total > 0 ? elapsed / total : 0;
 				const pct = Math.max(0, Math.min(100, ratio * 100));
-				this.weeklyMarker.classList.remove('cc-hidden');
+				this.weeklyMarker.classList.remove('ccbs-hidden');
 				this.weeklyMarker.style.left = `${pct}%`;
 			} else if (this.weeklyMarker) {
-				this.weeklyMarker.classList.add('cc-hidden');
+				this.weeklyMarker.classList.add('ccbs-hidden');
 			}
 		}
 

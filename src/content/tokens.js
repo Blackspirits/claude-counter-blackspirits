@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 
 	const ROOT_MESSAGE_ID = '00000000-0000-4000-8000-000000000000';
 

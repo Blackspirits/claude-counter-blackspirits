@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 	const CLAUDE_ORIGIN = 'https://claude.ai';
 
 	function getRuntime() {
@@ -20,9 +20,9 @@
 			window.addEventListener('message', (event) => {
 				if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
 				const data = event.data;
-				if (!data || data.cc !== 'ClaudeCounter') return;
+				if (!data || data.ccbs !== 'ClaudeCounterBlackSpirits') return;
 
-				if (data.type === 'cc:response') {
+				if (data.type === 'ccbs:response') {
 					const { requestId, ok, payload, error } = data;
 					const pending = this._pending.get(requestId);
 					if (!pending) return;
@@ -63,8 +63,8 @@
 				this._pending.set(requestId, { resolve, reject, timeoutId });
 				window.postMessage(
 					{
-						cc: 'ClaudeCounter',
-						type: 'cc:request',
+						ccbs: 'ClaudeCounterBlackSpirits',
+						type: 'ccbs:request',
 						requestId,
 						kind,
 						payload

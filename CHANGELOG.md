@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.4.8 - Release-ready cleanup
+
+- Split documentation into `README.md` (English, primary) and `README.pt-PT.md` (Portuguese Portugal).
+- Bumped extension/package version to `0.4.8`.
+- Namespaced the injected bridge marker, global object, custom events and CSS classes to reduce conflict risk with the original Claude Counter.
+- Removed untested Firefox-specific manifest metadata until Firefox packaging is validated.
+- Hardened URL normalization and SSE line handling in the injected bridge.
+- Avoid applying stale usage data when the active Claude organization changes while a request is in flight.
+- Added `.editorconfig`, `.gitattributes` and `CONTRIBUTING.md`.
+- Strengthened `tools/validate.mjs` with version alignment, permission, namespace and documentation checks.
+
 ## v0.4.7 - Compact language switcher
 
 - Language choice now collapses into a small chip (`PT`, `EN`, `FR`, etc.) after selection.

@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC_MARKER = 'ClaudeCounter';
+	const CC_MARKER = 'ClaudeCounterBlackSpirits';
 	const CLAUDE_ORIGIN = 'https://claude.ai';
 
 	// Capture original fetch before anyone else can wrap it
@@ -13,13 +13,13 @@
 
 	history.pushState = function (...args) {
 		const result = originalPushState(...args);
-		window.dispatchEvent(new CustomEvent('cc:urlchange'));
+		window.dispatchEvent(new CustomEvent('ccbs:urlchange'));
 		return result;
 	};
 
 	history.replaceState = function (...args) {
 		const result = originalReplaceState(...args);
-		window.dispatchEvent(new CustomEvent('cc:urlchange'));
+		window.dispatchEvent(new CustomEvent('ccbs:urlchange'));
 		return result;
 	};
 
@@ -29,7 +29,7 @@
 
 		// Detect generation start (completion requests)
 		if (url && method === 'POST' && (url.includes('/completion') || url.includes('/retry_completion'))) {
-			post('cc:generation_start', {});
+			post('ccbs:generation_start', {});
 		}
 
 		const response = await originalFetch.apply(window, args);
@@ -51,14 +51,14 @@
 	};
 
 	function post(type, payload) {
-		window.postMessage({ cc: CC_MARKER, type, payload }, CLAUDE_ORIGIN);
+		window.postMessage({ ccbs: CC_MARKER, type, payload }, CLAUDE_ORIGIN);
 	}
 
 	function postResponse(requestId, ok, payload, error) {
 		window.postMessage(
 			{
-				cc: CC_MARKER,
-				type: 'cc:response',
+				ccbs: CC_MARKER,
+				type: 'ccbs:response',
 				requestId,
 				ok,
 				payload,
@@ -74,26 +74,37 @@
 	}
 
 	function toAbsoluteUrl(input) {
-		if (typeof input === 'string') {
-			if (input.startsWith('/')) return `https://claude.ai${input}`;
-			return input;
+		try {
+			if (typeof input === 'string') return new URL(input, CLAUDE_ORIGIN).href;
+			if (input instanceof URL) return input.href;
+			if (input instanceof Request) return new URL(input.url, CLAUDE_ORIGIN).href;
+		} catch {
+			// Ignore malformed values from third-party wrappers.
 		}
-		if (input instanceof URL) return input.href;
-		if (input instanceof Request) return input.url;
 		return '';
+	}
+
+	function safeDecodeURIComponent(value) {
+		try {
+			return decodeURIComponent(value);
+		} catch {
+			return value;
+		}
 	}
 
 	function getConversationMeta(url) {
 		// /api/organizations/{orgId}/chat_conversations/{conversationId}
 		const match = url.match(/^https:\/\/claude\.ai\/api\/organizations\/([^/]+)\/chat_conversations\/([^/?]+)/);
-		return match ? { orgId: match[1], conversationId: match[2] } : null;
+		return match
+			? { orgId: safeDecodeURIComponent(match[1]), conversationId: safeDecodeURIComponent(match[2]) }
+			: null;
 	}
 
 	async function handleConversationResponse({ orgId, conversationId }, response) {
 		try {
 			const cloned = response.clone();
 			const data = await cloned.json();
-			post('cc:conversation', { orgId, conversationId, data });
+			post('ccbs:conversation', { orgId, conversationId, data });
 		} catch {
 			// ignore parse failures
 		}
@@ -104,8 +115,23 @@
 			const cloned = response.clone();
 			const reader = cloned.body?.getReader?.();
 			if (!reader) return;
+
 			const decoder = new TextDecoder();
 			let buffer = '';
+
+			const processLine = (line) => {
+				if (!line.startsWith('data:')) return;
+				const raw = line.slice(5).trim();
+				if (!raw) return;
+				try {
+					const json = JSON.parse(raw);
+					if (json?.type === 'message_limit' && json.message_limit) {
+						post('ccbs:message_limit', json.message_limit);
+					}
+				} catch {
+					// Ignore partial/non-JSON SSE lines.
+				}
+			};
 
 			while (true) {
 				const { done, value } = await reader.read();
@@ -114,30 +140,21 @@
 				buffer += decoder.decode(value, { stream: true });
 				const lines = buffer.split(/\r\n|\r|\n/);
 				buffer = lines.pop() || '';
-				for (const line of lines) {
-					if (!line.startsWith('data:')) continue;
-					const raw = line.slice(5).trim();
-					if (!raw) continue;
-					try {
-						const json = JSON.parse(raw);
-						if (json?.type === 'message_limit' && json.message_limit) {
-							post('cc:message_limit', json.message_limit);
-						}
-					} catch {
-						// ignore
-					}
-				}
+				for (const line of lines) processLine(line);
 			}
+
+			buffer += decoder.decode();
+			if (buffer) processLine(buffer);
 		} catch {
-			// best-effort; don't break claude.ai
+			// Best-effort; never break claude.ai.
 		}
 	}
 
 	window.addEventListener('message', async (event) => {
 		if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
 		const data = event.data;
-		if (!data || data.cc !== CC_MARKER) return;
-		if (data.type !== 'cc:request') return;
+		if (!data || data.ccbs !== CC_MARKER) return;
+		if (data.type !== 'ccbs:request') return;
 
 		const { requestId, kind, payload } = data;
 		try {
@@ -169,7 +186,7 @@
 				});
 				if (!res.ok) throw new Error(`Conversation request failed: HTTP ${res.status}`);
 				const json = await res.json();
-				post('cc:conversation', { orgId, conversationId, data: json });
+				post('ccbs:conversation', { orgId, conversationId, data: json });
 				postResponse(requestId, true, json, null);
 				return;
 			}

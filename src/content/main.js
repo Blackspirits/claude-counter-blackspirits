@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 	if (CC.__started) return;
 	CC.__started = true;
 
@@ -71,12 +71,12 @@
 		};
 
 		// Listen for custom event from bridge (history methods wrapped early)
-		window.addEventListener('cc:urlchange', fireIfChanged);
+		window.addEventListener('ccbs:urlchange', fireIfChanged);
 		// Also popstate for back/forward buttons
 		window.addEventListener('popstate', fireIfChanged);
 
 		return () => {
-			window.removeEventListener('cc:urlchange', fireIfChanged);
+			window.removeEventListener('ccbs:urlchange', fireIfChanged);
 			window.removeEventListener('popstate', fireIfChanged);
 		};
 	}
@@ -174,6 +174,11 @@
 			usageFetchInFlight = false;
 		}
 
+		// Avoid applying stale org-level usage if the user switched workspace/org
+		// while the request was in flight.
+		const activeOrgId = getOrgIdFromCookie() || currentOrgId;
+		if (activeOrgId && activeOrgId !== orgId) return;
+
 		const parsed = parseUsageFromUsageEndpoint(raw);
 		applyUsageUpdate(parsed, 'usage');
 	}
@@ -216,9 +221,9 @@
 		applyUsageUpdate(parsed, 'sse');
 	}
 
-	CC.bridge.on('cc:generation_start', handleGenerationStart);
-	CC.bridge.on('cc:conversation', handleConversationPayload);
-	CC.bridge.on('cc:message_limit', handleMessageLimit);
+	CC.bridge.on('ccbs:generation_start', handleGenerationStart);
+	CC.bridge.on('ccbs:conversation', handleConversationPayload);
+	CC.bridge.on('ccbs:message_limit', handleMessageLimit);
 
 	async function handleUrlChange() {
 		currentConversationId = getConversationId();

@@ -1,9 +1,11 @@
 {
   "name": "claude-counter-blackspirits",
-  "version": "0.4.7",
+  "version": "0.4.8",
   "private": true,
   "type": "module",
   "scripts": {
     "validate": "node tools/validate.mjs"
-  }
+  },
+  "description": "Privacy-focused Claude usage and context counter for claude.ai.",
+  "license": "MIT"
 }

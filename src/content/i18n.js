@@ -1,7 +1,7 @@
 (() => {
 	'use strict';
 
-	const CC = (globalThis.ClaudeCounter = globalThis.ClaudeCounter || {});
+	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 	const STORAGE_KEY = 'claude-counter-blackspirits-language';
 
 	const STRINGS = Object.freeze({
@@ -155,7 +155,7 @@
 		} catch {
 			// Ignore storage errors. The selected language will still apply until reload.
 		}
-		window.dispatchEvent(new CustomEvent('cc:languagechange'));
+		window.dispatchEvent(new CustomEvent('ccbs:languagechange'));
 	}
 
 	function getActiveLanguage() {
