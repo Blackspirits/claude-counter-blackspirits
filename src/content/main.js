@@ -12,10 +12,11 @@
 
 	function getOrgIdFromCookie() {
 		try {
-			return document.cookie
+			const raw = document.cookie
 				.split('; ')
 				.find((row) => row.startsWith('lastActiveOrg='))
 				?.split('=')[1] || null;
+			return raw ? decodeURIComponent(raw) : null;
 		} catch {
 			return null;
 		}
@@ -206,6 +207,7 @@
 		if (!data) return;
 
 		const metrics = await CC.tokens.computeConversationMetrics(data);
+		if (conversationId !== currentConversationId) return;
 		ui.setConversationMetrics({ totalTokens: metrics.totalTokens, cachedUntil: metrics.cachedUntil });
 	}
 
@@ -289,7 +291,8 @@
 	handleUrlChange();
 
 	function tick() {
-		if (!document.hidden) ui.tick();
+		if (document.hidden) return;
+		ui.tick();
 
 		// Refresh usage when a window ends (5h / 7d). SSE won't fire at rollover unless a message is sent.
 		const now = Date.now();
@@ -307,7 +310,7 @@
 		const ONE_HOUR_MS = 60 * 60 * 1000;
 		const sseAge = now - lastUsageSseMs;
 		const anyAge = now - lastUsageUpdateMs;
-		if (!document.hidden && sseAge > ONE_HOUR_MS && anyAge > ONE_HOUR_MS) {
+		if (sseAge > ONE_HOUR_MS && anyAge > ONE_HOUR_MS) {
 			refreshUsage();
 		}
 	}

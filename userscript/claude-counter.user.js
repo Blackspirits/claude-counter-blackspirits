@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Claude Counter - BlackSpirits Edition
 // @namespace    blackspirits.github.io/
-// @version      0.4.3-userscript
-// @description  Privacy-focused Claude usage and context counter for claude.ai.
+// @version      0.4.6-legacy
+// @description  Legacy standalone Claude usage/context counter. Extension build is recommended for BlackSpirits Edition features.
 // @author       BlackSpirits
 // @license      MIT
 // @match        https://claude.ai/*
@@ -55,8 +55,7 @@
 	if (originalFetch) {
 		window.fetch = async (...args) => {
 			const url = toAbsoluteUrl(args[0]);
-			const opts = args[1] || {};
-			const method = (opts.method || 'GET').toUpperCase();
+			const method = getRequestMethod(args[0], args[1]);
 
 			if (url && method === 'POST' && (url.includes('/completion') || url.includes('/retry_completion'))) {
 				try {
@@ -81,6 +80,11 @@
 
 			return response;
 		};
+	}
+
+	function getRequestMethod(input, options) {
+		const method = options?.method || (input instanceof Request ? input.method : '') || 'GET';
+		return String(method).toUpperCase();
 	}
 
 	function toAbsoluteUrl(input) {
@@ -1060,10 +1064,11 @@
 
 	function getOrgIdFromCookie() {
 		try {
-			return document.cookie
+			const raw = document.cookie
 				.split('; ')
 				.find((row) => row.startsWith('lastActiveOrg='))
 				?.split('=')[1] || null;
+			return raw ? decodeURIComponent(raw) : null;
 		} catch {
 			return null;
 		}
@@ -1180,6 +1185,7 @@
 			method: 'GET',
 			credentials: 'include'
 		});
+		if (!res.ok) throw new Error(`Usage request failed: HTTP ${res.status}`);
 		return await res.json();
 	}
 
@@ -1192,6 +1198,7 @@
 			method: 'GET',
 			credentials: 'include'
 		});
+		if (!res.ok) throw new Error(`Conversation request failed: HTTP ${res.status}`);
 		const json = await res.json();
 		return json;
 	}
@@ -1245,6 +1252,7 @@
 		if (!data) return;
 
 		const metrics = await CC.tokens.computeConversationMetrics(data);
+		if (conversationId !== currentConversationId) return;
 		ui.setConversationMetrics({ totalTokens: metrics.totalTokens, cachedUntil: metrics.cachedUntil });
 	}
 
@@ -1276,7 +1284,8 @@
 	}
 
 	function tick() {
-		if (!document.hidden) ui.tick();
+		if (document.hidden) return;
+		ui.tick();
 
 		const now = Date.now();
 		if (usageResetMs.five_hour && now >= usageResetMs.five_hour && rolloverHandledForResetMs.five_hour !== usageResetMs.five_hour) {
@@ -1291,7 +1300,7 @@
 		const ONE_HOUR_MS = 60 * 60 * 1000;
 		const sseAge = now - lastUsageSseMs;
 		const anyAge = now - lastUsageUpdateMs;
-		if (!document.hidden && sseAge > ONE_HOUR_MS && anyAge > ONE_HOUR_MS) {
+		if (sseAge > ONE_HOUR_MS && anyAge > ONE_HOUR_MS) {
 			refreshUsage();
 		}
 	}

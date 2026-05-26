@@ -168,14 +168,15 @@
 	}
 
 	async function hashString(str) {
-		if (!CC.bridge?.requestHash) return null;
+		if (!str || !crypto?.subtle?.digest) return null;
 		try {
-			const res = await CC.bridge.requestHash(str);
-			if (res?.hash) return res.hash;
+			const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+			const bytes = new Uint8Array(buffer);
+			// First 8 bytes are enough for a stable local cache fingerprint.
+			return Array.from(bytes.slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
 		} catch {
-			// No local hashing fallback.
+			return null;
 		}
-		return null;
 	}
 
 	async function fingerprint(text) {

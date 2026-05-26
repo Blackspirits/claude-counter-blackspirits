@@ -1,0 +1,8 @@
+{
+  "extName": {
+    "message": "Claude Counter - BlackSpirits Edition"
+  },
+  "extDescription": {
+    "message": "Contador de uso y contexto para Claude, centrado en la privacidad, con interfaz multilingüe, hora de reinicio y mejoras en segundo plano."
+  }
+}

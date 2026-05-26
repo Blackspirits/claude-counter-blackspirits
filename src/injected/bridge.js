@@ -25,10 +25,10 @@
 
 	window.fetch = async (...args) => {
 		const url = toAbsoluteUrl(args[0]);
-		const opts = args[1] || {};
+		const method = getRequestMethod(args[0], args[1]);
 
 		// Detect generation start (completion requests)
-		if (url && opts.method === 'POST' && (url.includes('/completion') || url.includes('/retry_completion'))) {
+		if (url && method === 'POST' && (url.includes('/completion') || url.includes('/retry_completion'))) {
 			post('cc:generation_start', {});
 		}
 
@@ -66,6 +66,11 @@
 			},
 			CLAUDE_ORIGIN
 		);
+	}
+
+	function getRequestMethod(input, options) {
+		const method = options?.method || (input instanceof Request ? input.method : '') || 'GET';
+		return String(method).toUpperCase();
 	}
 
 	function toAbsoluteUrl(input) {
@@ -136,19 +141,6 @@
 
 		const { requestId, kind, payload } = data;
 		try {
-			if (kind === 'hash') {
-				const text = typeof payload?.text === 'string' ? payload.text : '';
-				if (!text || !crypto?.subtle?.digest) {
-					postResponse(requestId, false, null, 'Hash unavailable');
-					return;
-				}
-				const buffer = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-				const bytes = new Uint8Array(buffer);
-				const hash = Array.from(bytes.slice(0, 8), (b) => b.toString(16).padStart(2, '0')).join('');
-				postResponse(requestId, true, { hash }, null);
-				return;
-			}
-
 			if (kind === 'usage') {
 				const orgId = payload?.orgId;
 				if (!orgId) throw new Error('Missing orgId');
@@ -157,6 +149,7 @@
 					method: 'GET',
 					credentials: 'include'
 				});
+				if (!res.ok) throw new Error(`Usage request failed: HTTP ${res.status}`);
 				const json = await res.json();
 				postResponse(requestId, true, json, null);
 				return;
@@ -174,6 +167,7 @@
 					method: 'GET',
 					credentials: 'include'
 				});
+				if (!res.ok) throw new Error(`Conversation request failed: HTTP ${res.status}`);
 				const json = await res.json();
 				post('cc:conversation', { orgId, conversationId, data: json });
 				postResponse(requestId, true, json, null);

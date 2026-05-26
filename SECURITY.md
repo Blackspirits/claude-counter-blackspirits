@@ -8,7 +8,9 @@ This fork is intended for personal/local use on `https://claude.ai/*`.
 
 - No external analytics.
 - No third-party network calls in the extension build.
-- No `chrome.storage` or `localStorage` usage in v0.4.3.
+- No `chrome.storage`.
+- `localStorage` is used only for the optional UI language preference under the key `claude-counter-blackspirits-language` on `claude.ai`. Choosing `Auto` removes that key.
+- Conversation text is hashed inside the isolated content script for local cache fingerprints; it is no longer sent through the injected page bridge for hashing.
 - The extension reads Claude conversation and usage data from the active browser session only to render local UI counters.
 
 ## Reporting

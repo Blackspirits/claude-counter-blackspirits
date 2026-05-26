@@ -43,7 +43,7 @@ Motivo: não interessa para um fork local/pessoal. O README foi reescrito para i
 
 Não aplicada.
 
-Motivo: adicionaria estado local/armazenamento e mudaria o perfil de privacidade. Para já, a versão BlackSpirits mantém-se sem `chrome.storage` e sem histórico local.
+Motivo: adicionaria histórico local e mudaria o perfil de privacidade. Para já, a versão BlackSpirits mantém-se sem `chrome.storage` e sem histórico local; só guarda a preferência opcional de idioma no `localStorage` de `claude.ai`.
 
 ## Issues consideradas
 
@@ -71,7 +71,7 @@ Fora do âmbito desta versão.
 - Sem permissões globais.
 - Só corre em `https://claude.ai/*`.
 - Sem `chrome.storage`.
-- Sem `localStorage`.
+- `localStorage` usado apenas para a preferência opcional de idioma (`claude-counter-blackspirits-language`).
 - Sem analytics.
 - Tokenizer vendorizado na extensão.
 
@@ -98,9 +98,44 @@ O userscript continua incluído, mas carrega o tokenizer via `@require` externo.
 - Validação JSON do `manifest.json`.
 - Revisão estática de permissões e chamadas de rede.
 
+## Revisão adicional v0.4.4
+
+- README convertido para formato bilingue pt-PT + inglês.
+- Corrigida leitura de `lastActiveOrg` para suportar valores codificados.
+- Reforçada deteção de pedidos de completion quando `fetch` recebe um objeto `Request`.
+- Adicionado tratamento explícito de respostas HTTP não OK nos endpoints internos usados pela extensão.
+- Evitado polling de uso enquanto o separador está oculto; o refresh fica concentrado no regresso ao separador.
+- Adicionada proteção contra atualização de UI com métricas de uma conversa antiga após navegação.
+
 ## Próximos passos recomendados
 
 1. Testar no Chrome/Edge com `Load unpacked`.
 2. Abrir uma conversa longa no Claude e confirmar se a barra aparece.
 3. Comparar os valores com `Settings > Usage` do Claude.
 4. Só depois fazer commit/push para GitHub.
+
+
+## v0.4.5 additional review
+
+- Added a small i18n layer for injected UI text.
+- Added manual language choice without new permissions.
+- Chose `localStorage` on `claude.ai` instead of `chrome.storage` to keep the extension permission profile unchanged.
+- Known trade-off: this stores one non-sensitive language preference under the Claude origin.
+
+## Revisão adicional v0.4.6
+
+- Corrigida a documentação de privacidade que ainda dizia que não havia `localStorage`; agora explica que só a preferência opcional de idioma é guardada.
+- A opção `Automático` passou a remover a chave `claude-counter-blackspirits-language`.
+- Hashing de mensagens movido para o content script isolado, evitando enviar texto completo pelo bridge injetado apenas para calcular fingerprints de cache local.
+- Removido `requestHash` do bridge e o respetivo handler do script injetado.
+- Adicionados alemão e italiano ao i18n interno e ao manifesto.
+- Adicionadas labels de acessibilidade e refresh por teclado na linha de utilização e no seletor de idioma.
+- Adicionado `PRIVACY.md` com explicação bilingue.
+- Adicionado `tools/validate.mjs`, `package.json` e workflow GitHub Actions para validação básica.
+- Userscript marcado como legacy e documentado separadamente.
+
+
+## v0.4.7
+
+- O seletor de idioma passou a recolher para um botão curto (`PT`, `EN`, `FR`, etc.) após seleção.
+- Não foram adicionadas permissões novas nem armazenamento adicional.
