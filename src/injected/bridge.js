@@ -43,8 +43,8 @@
 		const reader = response.clone().body?.getReader();
 		if (!reader) return;
 		const decoder = new TextDecoder();
-		let buffer = '', data = [], size = 0;
-		const timer = setTimeout(() => { reader.cancel().catch(() => {}); }, 10 * 60000);
+		let buffer = '', data = [], size = 0, completed = false, stopped = false;
+		const timer = setTimeout(() => { stopped = true; reader.cancel().catch(() => {}); }, 10 * 60000);
 		function dispatch() {
 			try {
 				const json = JSON.parse(data.join('\n'));
@@ -59,7 +59,7 @@
 		try {
 			while (true) {
 				const { done, value } = await reader.read();
-				if (done) break;
+				if (done) { completed = !stopped; break; }
 				size += value.byteLength;
 				if (size > 8 * 1024 * 1024) break;
 				buffer += decoder.decode(value, { stream: true });
@@ -75,7 +75,11 @@
 			if (buffer) line(buffer.replace(/\r$/, ''));
 			dispatch();
 		} catch { /* Observation must never interfere with the original response. */ }
-		finally { clearTimeout(timer); reader.cancel().catch(() => {}); }
+		finally {
+			clearTimeout(timer);
+			reader.cancel().catch(() => {});
+			if (completed) post('ccbs:generation_end', { ...meta, sequence: requestSequence });
+		}
 	}
 	window.fetch = async function (...args) {
 		let url, meta;

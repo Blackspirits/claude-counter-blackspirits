@@ -22,9 +22,10 @@
 		const timer = setTimeout(() => { observer.disconnect(); resolve(null); }, timeoutMs);
 	});
 
-	let conversationId = null, orgId = null, conversationRevision = 0, lastSequence = -1;
+	let conversationId = null, orgId = null, conversationRevision = 0, contextEpoch = 0, lastSequence = -1;
 	let conversationInFlight = null, conversationAttemptAt = -Infinity;
 	let renderedUsage = '';
+	let conversationRefreshTimer = null;
 	const ui = new CC.ui.CounterUI({ onUsageRefresh: async () => {
 		syncContext();
 		await Promise.allSettled([usage.refresh(true), refreshConversation()]);
@@ -47,10 +48,13 @@
 		if (orgId === nextOrg && conversationId === nextConversation) return false;
 		orgId = nextOrg;
 		conversationId = nextConversation;
+		contextEpoch++;
 		conversationRevision++;
 		lastSequence = -1;
 		conversationAttemptAt = -Infinity;
 		conversationInFlight = null;
+		clearTimeout(conversationRefreshTimer);
+		conversationRefreshTimer = null;
 		ui.setConversationMetrics();
 		usage.syncOrg();
 		return true;
@@ -90,11 +94,23 @@
 		}
 	}
 
+	function scheduleConversationRefresh() {
+		clearTimeout(conversationRefreshTimer);
+		const epoch = contextEpoch;
+		conversationRefreshTimer = setTimeout(() => {
+			syncContext();
+			if (epoch !== contextEpoch) return;
+			if (conversationInFlight) { scheduleConversationRefresh(); return; }
+			refreshConversation();
+		}, Math.max(1000, 10000 - (Date.now() - conversationAttemptAt)));
+	}
+
 	CC.bridge.on('ccbs:conversation', handleConversation);
 	CC.bridge.on('ccbs:message_limit', payload => usage.acceptEvent(payload));
 	CC.bridge.on('ccbs:transport', () => ui.setTransportNotice(true));
-	CC.bridge.on('ccbs:generation_start', payload => {
-		if (payload?.orgId === orgId && payload?.conversationId === conversationId) ui.setPendingCache(true);
+	CC.bridge.on('ccbs:generation_end', payload => {
+		syncContext();
+		if (payload?.orgId === orgId && payload?.conversationId === conversationId) scheduleConversationRefresh();
 	});
 
 	function attach() {
@@ -124,7 +140,7 @@
 			// Invalidate calculations for the previous branch; its fetch can still finish.
 			conversationRevision++;
 			ui.setConversationMetrics();
-			refreshConversation();
+			scheduleConversationRefresh();
 		});
 		branchObserver.observe(indicator, { childList: true, characterData: true, subtree: true });
 		branchTimer = setTimeout(() => branchObserver?.disconnect(), 60000);

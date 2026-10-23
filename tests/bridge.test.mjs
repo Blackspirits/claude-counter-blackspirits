@@ -32,6 +32,7 @@ test('SSE parsing preserves final data, multiline events and organization identi
  const response = await h.window.fetch('https://claude.ai/api/organizations/A/chat_conversations/C/completion', { method: 'POST' });
  assert.match(await response.text(), /message_limit/); await flush();
  const event = h.posts.find(p => p.type === 'ccbs:message_limit'); assert.equal(event.payload.orgId, 'A'); assert.equal(event.payload.messageLimit.windows['5h'].utilization, .4);
+ assert(h.posts.some(p => p.type === 'ccbs:generation_end' && p.payload.conversationId === 'C'));
 });
 test('SSE split CRLF and final UTF-8 bytes are parsed without corrupting the page stream', async () => {
  const bytes = new TextEncoder().encode('data: {"type":"message_limit","message_limit":{"label":"ação","windows":{"5h":{"utilization":0.4}}}}\r\n\r\n');
