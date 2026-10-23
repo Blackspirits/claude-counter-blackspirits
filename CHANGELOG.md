@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.5.0-beta.1 — 2026-10-23
+
+- Add organization-scoped usage state, per-window stale-response guards, partial updates and validated dates.
+- Bound retries with backoff, Retry-After and auth pauses; retain a five-minute visible-tab fallback.
+- Start the MAIN-world bridge at document_start with a handshake, sequenced conversation responses and bounded observation.
+- Handle special tokenizer markers as text; reject cyclic, incomplete and oversized input explicitly.
+- Show visible status/refresh controls; preserve language choice when storage is blocked and format numbers in the selected locale.
+- Remove the unverified fixed context-capacity bar and inferred cache countdown.
+- Add regression tests, packaged-extension Chromium coverage and a minimal installable artifact.
+- Keep Connect/protobuf decoding and real-account compatibility as explicit beta limitations.
+
+
 ## v0.4.8 - Release-ready cleanup
 
 - Split documentation into `README.md` (English, primary) and `README.pt-PT.md` (Portuguese Portugal).

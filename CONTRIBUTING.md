@@ -1,25 +1,7 @@
 # Contributing
 
-This fork is intentionally small and conservative.
+Use Node.js 22 or newer. Run `npm ci --ignore-scripts`, `npm run validate` and `npm test` before submitting a change. For bridge, manifest or UI changes, install Chromium with `npx playwright install chromium` and run `npm run test:e2e`.
 
-## Rules
+Keep all six UI translations and their placeholders aligned. Add regression coverage for reproduced behavior. Do not use real conversation data, cookies or credentials in fixtures.
 
-- Keep the extension permission profile minimal.
-- Do not add analytics.
-- Do not add third-party network calls to the extension build.
-- Prefer local/vendor assets over runtime CDN dependencies.
-- Keep `README.md` in English and `README.pt-PT.md` in Portuguese (Portugal).
-- Run validation before every commit:
-
-  ```bash
-  npm run validate
-  ```
-
-## Areas that need real testing
-
-Do not claim support without testing for:
-
-- Claude Desktop;
-- Claude Code in the terminal;
-- `claude.ai/code`;
-- Firefox/AMO packaging.
+`npm run package` produces the installable extension folder. The userscript is historical and is not part of this package. Preserve upstream and tokenizer MIT notices. See BETA_TESTING.md for live-account release checks.

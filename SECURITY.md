@@ -20,8 +20,14 @@ For this BlackSpirits fork, review changes manually before publishing or distrib
 - `manifest.json`
 - `src/injected/bridge.js`
 - `src/content/bridge-client.js`
-- `userscript/claude-counter.user.js` (legacy only, not recommended for normal use)
+- `src/content/usage.js`
+- `src/content/main.js`
+
+The legacy userscript is excluded from the beta package.
 
 ## Known risk
 
 Any extension running on `claude.ai` has access to page data for that origin. Treat it as trusted code.
+
+
+The MAIN-world bridge shares the page's trust boundary. Origin/source checks exclude foreign windows; they do not authenticate messages against scripts already running on claude.ai. The bridge exposes only readiness and bounded same-origin GET operations. It does not receive extension privileges or secrets. A page can still interfere with its own displayed counters.

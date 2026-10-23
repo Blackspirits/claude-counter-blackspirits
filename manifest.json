@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_extName__",
-  "version": "0.4.8",
+  "version": "0.5.0",
   "description": "__MSG_extDescription__",
   "icons": {
     "16": "icons/icon16.png",
@@ -11,17 +11,17 @@
     "128": "icons/icon128.png",
     "256": "icons/icon256.png"
   },
-  "action": {
-    "default_title": "__MSG_extName__",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "32": "icons/icon32.png",
-      "48": "icons/icon48.png",
-      "96": "icons/icon96.png",
-      "128": "icons/icon128.png"
-    }
-  },
   "content_scripts": [
+    {
+      "matches": [
+        "https://claude.ai/*"
+      ],
+      "js": [
+        "src/injected/bridge.js"
+      ],
+      "world": "MAIN",
+      "run_at": "document_start"
+    },
     {
       "matches": [
         "https://claude.ai/*"
@@ -35,20 +35,13 @@
         "src/content/i18n.js",
         "src/vendor/o200k_base.js",
         "src/content/tokens.js",
+        "src/content/usage.js",
         "src/content/ui.js",
         "src/content/main.js"
       ]
     }
   ],
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "src/injected/bridge.js"
-      ],
-      "matches": [
-        "https://claude.ai/*"
-      ]
-    }
-  ],
-  "default_locale": "en"
+  "default_locale": "en",
+  "version_name": "0.5.0-beta.1",
+  "minimum_chrome_version": "111"
 }

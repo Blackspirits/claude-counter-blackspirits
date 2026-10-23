@@ -75,29 +75,33 @@
 	function countTokens(text) {
 		if (!text) return 0;
 		const tokenizer = getTokenizer();
-		if (!tokenizer?.countTokens) return 0;
-		try {
-			return tokenizer.countTokens(text);
-		} catch {
-			return 0;
-		}
+		if (!tokenizer?.countTokens) throw new Error('Tokenizer unavailable');
+		// Treat special-looking strings as ordinary user text.
+		return tokenizer.countTokens(text, { disallowedSpecial: new Set() });
 	}
 
 	function buildTrunk(conversation) {
 		const messages = Array.isArray(conversation?.chat_messages) ? conversation.chat_messages : [];
+		if (messages.length > 10000) throw new Error('Conversation too large');
 		const byId = new Map();
 		for (const msg of messages) {
 			if (msg?.uuid) byId.set(msg.uuid, msg);
 		}
 
 		const leaf = conversation?.current_leaf_message_uuid;
-		if (!leaf) return [];
+		if (!leaf) {
+			if (messages.length) throw new Error('Missing conversation leaf');
+			return [];
+		}
 
 		const trunk = [];
 		let currentId = leaf;
+		const visited = new Set();
 		while (currentId && currentId !== ROOT_MESSAGE_ID) {
+			if (visited.has(currentId)) throw new Error('Cyclic conversation');
+			visited.add(currentId);
 			const msg = byId.get(currentId);
-			if (!msg) break;
+			if (!msg) throw new Error('Incomplete conversation');
 			trunk.push(msg);
 			currentId = msg.parent_message_uuid;
 		}
@@ -135,7 +139,7 @@
 			const minimal = {
 				tool_use_id: item.tool_use_id,
 				is_error: item.is_error,
-				content: textualPayload || item.content
+				content: textualPayload
 			};
 			return stableStringify(minimal);
 		}
@@ -212,23 +216,27 @@
 
 	const tokenCache = new TokenCache();
 
-	async function computeConversationMetrics(conversation) {
+	async function computeConversationMetrics(conversation, cancelled = () => false) {
 		const trunk = buildTrunk(conversation);
 		const trunkIds = trunk.map((m) => m.uuid).filter(Boolean);
 		tokenCache.pruneToMessageIds(trunkIds);
 
 		let totalTokens = 0;
+		let totalCharacters = 0;
 		let lastAssistantMs = null;
 
 		for (const msg of trunk) {
+			if (cancelled()) throw new Error('Superseded calculation');
 			if (msg?.sender === 'assistant' && msg?.created_at) {
 				const msgMs = Date.parse(msg.created_at);
-				if (!lastAssistantMs || msgMs > lastAssistantMs) {
+				if (Number.isFinite(msgMs) && (!lastAssistantMs || msgMs > lastAssistantMs)) {
 					lastAssistantMs = msgMs;
 				}
 			}
 
 			const msgText = stringifyMessageCountables(msg);
+			totalCharacters += msgText.length;
+			if (msgText.length > 250000 || totalCharacters > 2000000) throw new Error('Text too large for foreground tokenization');
 			const msgTokens = msg?.uuid ? await tokenCache.getMessageTokens(msg.uuid, msgText) : countTokens(msgText);
 			totalTokens += msgTokens;
 		}

@@ -1,11 +1,17 @@
 {
   "name": "claude-counter-blackspirits",
-  "version": "0.4.8",
+  "version": "0.5.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "validate": "node tools/validate.mjs"
+    "validate": "node tools/validate.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "package": "node tools/package.mjs",
+    "test:e2e": "npm run package && node tests/e2e/extension.mjs"
   },
   "description": "Privacy-focused Claude usage and context counter for claude.ai.",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
 }
