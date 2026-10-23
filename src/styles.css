@@ -11,8 +11,8 @@
 /* Usage row: session + weekly */
 .ccbs-usageRow {
 	position: relative;
-	z-index: 50;
-	cursor: pointer;
+	z-index: 1;
+	cursor: default;
 	user-select: none;
 	transition: opacity 150ms ease;
 }
@@ -186,17 +186,42 @@
 	border-radius: 6px;
 }
 
-/* Self-contained layout, independent of host utility CSS. */
-.ccbs-usageRow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; box-sizing: border-box; padding: 6px 2px; font-size: 11px; cursor: default; }
-.ccbs-usageGroup { flex: 1 1 260px; flex-wrap: wrap; }
+/* Self-contained layout, outside native composer controls. */
+.ccbs-usageRow {
+ display: flex;
+ flex-direction: column;
+ align-items: stretch;
+ gap: 6px;
+ flex: 0 0 auto;
+ width: 100%;
+ min-width: 0;
+ box-sizing: border-box;
+ padding: 6px 8px;
+ font-family: inherit;
+ font-size: 11px;
+ line-height: 1.45;
+ cursor: default;
+}
+.ccbs-usageGroup {
+ display: grid;
+ grid-template-columns: minmax(0, 1fr) minmax(60px, 120px);
+ align-items: center;
+ gap: 12px;
+ flex: none;
+ width: 100%;
+}
+.ccbs-usageText { grid-column: 1; grid-row: 1; }
+.ccbs-usageGroup > .ccbs-bar { grid-column: 2; grid-row: 1; }
 .ccbs-usageText, .ccbs-headerItem { white-space: normal; overflow-wrap: anywhere; }
-.ccbs-bar--usage { min-width: 50px; max-width: 120px; }
-.ccbs-status { flex: 1 1 auto; }
-.ccbs-refresh { color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 1px 7px; cursor: pointer; font-size: 15px; }
+.ccbs-bar--usage { min-width: 0; width: 100%; }
+.ccbs-usageFooter { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ccbs-status { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.ccbs-transportNotice { font-size: 10px; overflow-wrap: anywhere; }
+.ccbs-refresh { flex: 0 0 auto; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 1px 7px; cursor: pointer; font-size: 15px; }
 .ccbs-refresh:disabled { opacity: .5; cursor: wait; }
 .ccbs-refresh:focus-visible, .ccbs-tooltipTrigger:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
 .ccbs-usageRow[data-status="stale"] .ccbs-usageGroup,
 .ccbs-usageRow[data-status="unavailable"] .ccbs-usageGroup,
 .ccbs-usageRow[data-status="signedOut"] .ccbs-usageGroup { opacity: .55; }
 .ccbs-tooltip { max-width: min(360px, calc(100vw - 20px)); color: CanvasText; background: Canvas; border: 1px solid currentColor; }
-@media (max-width: 600px) { .ccbs-usageGroup--weekly { justify-content: flex-start; } }
+@media (max-width: 480px) { .ccbs-usageGroup { grid-template-columns: minmax(0, 1fr) 70px; gap: 8px; } }

@@ -4,7 +4,7 @@
 
 Um fork do [Claude Counter](https://github.com/she-llac/claude-counter) para `claude.ai`, com foco na privacidade. Mantém os créditos originais e a licença MIT.
 
-**0.5.0-beta.1 — experimental, para testes antes de uma versão estável.**
+**0.5.0-beta.2 — experimental, para testes antes de uma versão estável.**
 
 ## Funcionalidades
 
@@ -21,7 +21,7 @@ A estimativa utiliza o tokenizador genérico `o200k_base`, não o tokenizador of
 
 Requer Chrome/Edge/Chromium 111 ou posterior. Firefox, Claude Desktop e Claude Code não foram validados.
 
-1. Descarrega o artefacto `claude-counter-blackspirits-0.5.0-beta.1` de uma [execução do Actions](https://github.com/Blackspirits/claude-counter-blackspirits/actions) **concluída com sucesso**, ou cria o pacote localmente.
+1. Descarrega o artefacto `claude-counter-blackspirits-0.5.0-beta.2` de uma [execução do Actions](https://github.com/Blackspirits/claude-counter-blackspirits/actions) **concluída com sucesso**, ou cria o pacote localmente.
 2. Extrai o ZIP para uma pasta permanente.
 3. Abre `chrome://extensions` ou `edge://extensions` e ativa o **Modo de programador**.
 4. Escolhe **Carregar expandida** e seleciona a pasta que contém `manifest.json`.

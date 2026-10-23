@@ -243,7 +243,7 @@
 			let headerReattachPending = false;
 
 			this.domObserver = new MutationObserver(() => {
-				const usageMissing = this.usageLine && !document.contains(this.usageLine);
+				const usageMissing = this.usageLine && !this._isUsagePlaced();
 				const headerMissing = !document.contains(this.headerContainer);
 
 				if (usageMissing && !usageReattachPending) {
@@ -273,7 +273,7 @@
 			this.statusSpan.className = 'ccbs-status';
 			this.statusSpan.setAttribute('role', 'status');
 			this.transportSpan = document.createElement('span');
-			this.transportSpan.className = 'ccbs-status ccbs-hidden';
+			this.transportSpan.className = 'ccbs-transportNotice ccbs-hidden';
 			this.refreshButton = document.createElement('button');
 			this.refreshButton.type = 'button';
 			this.refreshButton.className = 'ccbs-refresh';
@@ -321,7 +321,10 @@
 
 			this.usageLine.appendChild(this.sessionGroup);
 			this.usageLine.appendChild(this.weeklyGroup);
-			this.usageLine.append(this.statusSpan, this.transportSpan, this.refreshButton, this.languageSwitcher);
+			const footer = document.createElement('div');
+			footer.className = 'ccbs-usageFooter';
+			footer.append(this.statusSpan, this.refreshButton, this.languageSwitcher);
+			this.usageLine.append(footer, this.transportSpan);
 
 			this.refreshProgressChrome();
 
@@ -480,35 +483,33 @@
 			this.refreshProgressChrome();
 		}
 
+		_getUsagePlacement() {
+			const modelSelector = document.querySelector(CC.DOM.MODEL_SELECTOR_DROPDOWN);
+			if (!modelSelector) return null;
+			// CDS controls contain nested horizontal rows and clipped containers.
+			// Append to the full composer group, outside every native control row.
+			const host = modelSelector.closest('fieldset[data-perf-region="composer"]') ||
+				modelSelector.closest('[data-cds="ChatComposer"]');
+			if (host) return { host };
+			const anchor = modelSelector.closest('[data-testid="chat-input-grid-area"]') ||
+				modelSelector.closest('[data-testid="chat-input-grid-container"]');
+			return anchor?.parentElement ? { host: anchor.parentElement, anchor } : null;
+		}
+
+		_isUsagePlaced() {
+			const placement = this._getUsagePlacement();
+			if (!placement) return document.contains(this.usageLine);
+			return this.usageLine.parentElement === placement.host &&
+				(!placement.anchor || placement.anchor.nextElementSibling === this.usageLine);
+		}
+
 		attachUsageLine() {
 			if (!this.usageLine) return;
-			const modelSelector = document.querySelector(CC.DOM.MODEL_SELECTOR_DROPDOWN);
-			if (!modelSelector) return;
-			const gridContainer = modelSelector.closest('[data-testid="chat-input-grid-container"]');
-			const gridArea = modelSelector.closest('[data-testid="chat-input-grid-area"]');
-			const findToolbarRow = (el, stopAt) => {
-				let cur = el;
-				while (cur && cur !== document.body) {
-					if (stopAt && cur === stopAt) break;
-					if (cur !== el && cur.nodeType === 1) {
-						const style = window.getComputedStyle(cur);
-						if (style.display === 'flex' && style.flexDirection === 'row') {
-							const buttons = cur.querySelectorAll('button').length;
-							if (buttons > 1) return cur;
-						}
-					}
-					cur = cur.parentElement;
-				}
-				return null;
-			};
-
-			const toolbarRow = gridArea || gridContainer ||
-				(gridContainer ? findToolbarRow(modelSelector, gridArea || gridContainer) : null) ||
-				findToolbarRow(modelSelector) ||
-				modelSelector.parentElement?.parentElement?.parentElement;
-			if (!toolbarRow) return;
-			if (toolbarRow.nextElementSibling !== this.usageLine) {
-				toolbarRow.after(this.usageLine);
+			const placement = this._getUsagePlacement();
+			if (!placement) return;
+			if (!this._isUsagePlaced()) {
+				if (placement.anchor) placement.anchor.after(this.usageLine);
+				else placement.host.appendChild(this.usageLine);
 			}
 			this.refreshProgressChrome();
 		}

@@ -1,6 +1,6 @@
 # Auditoria BlackSpirits - Claude Counter
 
-> Historical audit for the 0.4.x implementation. See BETA_TESTING.md and CHANGELOG.md for 0.5.0-beta.1; this document is not a certification of the beta.
+> Historical audit for the 0.4.x implementation. See BETA_TESTING.md and CHANGELOG.md for 0.5.0-beta.2; this document is not a certification of the beta.
 
 ## Veredicto
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0-beta.2 — 2026-10-23
+
+- Place usage indicators below the complete CDS composer group instead of inside the model-selector row.
+- Align both usage bars in a dedicated responsive layout; keep refresh/language controls together and the live-update notice on its own line.
+- Repair placement after composer replacement, reparenting or legacy-to-CDS navigation.
+- Add a sanitized structural fixture based on a real-account composer report and browser assertions for layout, native controls and reinsertion.
+
+
 ## 0.5.0-beta.1 — 2026-10-23
 
 - Add organization-scoped usage state, per-window stale-response guards, partial updates and validated dates.
