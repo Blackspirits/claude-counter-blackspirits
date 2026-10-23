@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0-beta.3 — 2026-10-23
+
+- Reduce the default counter to a compact summary with session/weekly percentages, mini bars and controls on one row when space permits.
+- Move reset times, the last update and the live-transport notice into a keyboard-accessible expandable details panel.
+- Keep stale/access/error states discoverable through an attention indicator; preserve reset details in hover/focus tooltips.
+
+
 ## 0.5.0-beta.2 — 2026-10-23
 
 - Place usage indicators below the complete CDS composer group instead of inside the model-selector row.

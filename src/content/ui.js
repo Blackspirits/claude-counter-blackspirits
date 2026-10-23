@@ -65,7 +65,7 @@
 		return CC.i18n.t('resetLabel', { time: formatResetTime(timestampMs), countdown: formatResetCountdown(timestampMs) });
 	}
 
-	function setupTooltip(element, tooltip, { topOffset = 10 } = {}) {
+	function setupTooltip(element, tooltip, { topOffset = 10, onShow } = {}) {
 		if (!element || !tooltip) return;
 		if (element.hasAttribute('data-tooltip-setup')) return;
 		element.setAttribute('data-tooltip-setup', 'true');
@@ -77,6 +77,7 @@
 		let hideTimer;
 
 		const show = () => {
+			onShow?.();
 			const rect = element.getBoundingClientRect();
 			tooltip.style.opacity = '1';
 			const tipRect = tooltip.getBoundingClientRect();
@@ -314,17 +315,39 @@
 
 			this.weeklyGroup = document.createElement('div');
 			this.weeklyGroup.className = 'ccbs-usageGroup ccbs-usageGroup--weekly';
-			this.weeklyGroup.appendChild(this.weeklyBar);
 			this.weeklyGroup.appendChild(this.weeklyUsageSpan);
+			this.weeklyGroup.appendChild(this.weeklyBar);
 
 			this.languageSwitcher = this._createLanguageSwitcher();
 
-			this.usageLine.appendChild(this.sessionGroup);
-			this.usageLine.appendChild(this.weeklyGroup);
-			const footer = document.createElement('div');
-			footer.className = 'ccbs-usageFooter';
-			footer.append(this.statusSpan, this.refreshButton, this.languageSwitcher);
-			this.usageLine.append(footer, this.transportSpan);
+			this.detailsPanel = document.createElement('div');
+			this.detailsPanel.id = 'ccbs-usage-details';
+			this.detailsPanel.className = 'ccbs-details ccbs-hidden';
+			this.sessionDetails = document.createElement('span');
+			this.weeklyDetails = document.createElement('span');
+			this.detailsPanel.append(this.sessionDetails, this.weeklyDetails, this.statusSpan, this.transportSpan);
+			this.detailsToggle = document.createElement('button');
+			this.detailsToggle.type = 'button';
+			this.detailsToggle.className = 'ccbs-detailsToggle';
+			this.detailsToggle.setAttribute('aria-controls', this.detailsPanel.id);
+			this.detailsToggle.setAttribute('aria-expanded', 'false');
+			this.detailsToggle.addEventListener('click', () => this._setDetailsOpen(this.detailsPanel.classList.contains('ccbs-hidden')));
+			this.usageLine.addEventListener('keydown', event => {
+				if (event.key === 'Escape' && this.detailsToggle.getAttribute('aria-expanded') === 'true') {
+					event.stopPropagation();
+					this._setDetailsOpen(false);
+					this.detailsToggle.focus();
+				}
+			});
+			const controls = document.createElement('div');
+			controls.className = 'ccbs-controls';
+			controls.append(this.detailsToggle, this.refreshButton, this.languageSwitcher);
+			const summary = document.createElement('div');
+			summary.className = 'ccbs-usageSummary';
+			summary.append(this.sessionGroup, this.weeklyGroup, controls);
+			this.usageLine.append(summary, this.detailsPanel);
+			this._updateDetailsButton();
+
 
 			this.refreshProgressChrome();
 
@@ -449,6 +472,7 @@
 			if (this.currentUsage) this.setUsage(this.currentUsage);
 			if (this.usageStatus) this.setUsageStatus(this.usageStatus);
 			if (this.transportLimited) this.setTransportNotice(true);
+			this._updateDetailsButton();
 		}
 
 		_setupTooltips(refreshOnly = false) {
@@ -458,11 +482,11 @@
 
 			if (!this.sessionTooltip) this.sessionTooltip = makeTooltip('');
 			this.sessionTooltip.textContent = CC.i18n.t('tooltipSession');
-			setupTooltip(this.sessionGroup, this.sessionTooltip, { topOffset: 8 });
+			setupTooltip(this.sessionGroup, this.sessionTooltip, { topOffset: 8, onShow: () => this._updateUsageDetails() });
 
 			if (!this.weeklyTooltip) this.weeklyTooltip = makeTooltip('');
 			this.weeklyTooltip.textContent = CC.i18n.t('tooltipWeekly');
-			setupTooltip(this.weeklyGroup, this.weeklyTooltip, { topOffset: 8 });
+			setupTooltip(this.weeklyGroup, this.weeklyTooltip, { topOffset: 8, onShow: () => this._updateUsageDetails() });
 		}
 
 		attach() {
@@ -540,6 +564,36 @@
 			this._renderHeader();
 		}
 
+		_setDetailsOpen(open) {
+			this.detailsPanel.classList.toggle('ccbs-hidden', !open);
+			this.detailsToggle.setAttribute('aria-expanded', String(open));
+			this._updateUsageDetails();
+			this._updateDetailsButton();
+		}
+
+		_updateDetailsButton() {
+			if (!this.detailsToggle) return;
+			const open = this.detailsToggle.getAttribute('aria-expanded') === 'true';
+			const needsAttention = ['stale', 'unavailable', 'signedOut', 'unsupported'].includes(this.usageStatus?.status);
+			this.detailsToggle.textContent = open ? '⌃' : needsAttention ? '!' : '⌄';
+			this.detailsToggle.classList.toggle('ccbs-needsAttention', needsAttention);
+			const label = CC.i18n.t(open ? 'hideDetails' : 'showDetails');
+			const status = this.statusSpan.textContent;
+			this.detailsToggle.title = status ? `${label} · ${status}` : label;
+			this.detailsToggle.setAttribute('aria-label', this.detailsToggle.title);
+		}
+
+		_updateUsageDetails() {
+			const session = this.sessionUsageBase ? `${this.sessionUsageBase}${this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : ''}` : '';
+			const weekly = this.weeklyUsageBase ? `${this.weeklyUsageBase}${this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : ''}` : '';
+			this.sessionDetails.textContent = session;
+			this.weeklyDetails.textContent = weekly;
+			this.sessionDetails.classList.toggle('ccbs-hidden', !session);
+			this.weeklyDetails.classList.toggle('ccbs-hidden', !weekly);
+			if (this.sessionTooltip) this.sessionTooltip.textContent = [session, CC.i18n.t('tooltipSession')].filter(Boolean).join('\n');
+			if (this.weeklyTooltip) this.weeklyTooltip.textContent = [weekly, CC.i18n.t('tooltipWeekly')].filter(Boolean).join('\n');
+		}
+
 		setTransportNotice(limited) {
 			this.transportLimited = limited;
 			this.transportSpan.textContent = limited ? CC.i18n.t('transportNotice') : '';
@@ -552,6 +606,7 @@
 			const time = status.updatedAt ? new Date(status.updatedAt).toLocaleTimeString(CC.i18n.getLocale(), { hour: '2-digit', minute: '2-digit' }) : '—';
 			this.statusSpan.textContent = CC.i18n.t(key, { time });
 			this.usageLine.dataset.status = status.status;
+			this._updateDetailsButton();
 		}
 
 		_renderHeader() {
@@ -588,9 +643,8 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.sessionResetMs = session.resets_at ? Date.parse(session.resets_at) : null;
 				this.sessionWindowStartMs = this.sessionResetMs ? this.sessionResetMs - 5 * 60 * 60 * 1000 : null;
-				const resetText = this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : '';
 				this.sessionUsageBase = CC.i18n.t('sessionUsage', { pct: pct.toLocaleString(CC.i18n.getLocale(), { maximumFractionDigits: 1 }) });
-				this.sessionUsageSpan.textContent = `${this.sessionUsageBase}${resetText}`;
+				this.sessionUsageSpan.textContent = this.sessionUsageBase;
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.sessionBarFill.style.width = `${width}%`;
@@ -598,6 +652,7 @@
 				this.sessionBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
 				this.sessionUsageSpan.textContent = '';
+				this.sessionUsageBase = '';
 				this.sessionBarFill.style.width = '0%';
 				this.sessionBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 				this.sessionResetMs = null;
@@ -616,15 +671,15 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.weeklyResetMs = weekly.resets_at ? Date.parse(weekly.resets_at) : null;
 				this.weeklyWindowStartMs = this.weeklyResetMs ? this.weeklyResetMs - 7 * 24 * 60 * 60 * 1000 : null;
-				const resetText = this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : '';
 				this.weeklyUsageBase = CC.i18n.t('weeklyUsage', { pct: pct.toLocaleString(CC.i18n.getLocale(), { maximumFractionDigits: 1 }) });
-				this.weeklyUsageSpan.textContent = `${this.weeklyUsageBase}${resetText}`;
+				this.weeklyUsageSpan.textContent = this.weeklyUsageBase;
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.weeklyBarFill.style.width = `${width}%`;
 				this.weeklyBarFill.classList.toggle('ccbs-warn', width >= 90);
 				this.weeklyBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
+				this.weeklyUsageBase = '';
 				this.weeklyUsageSpan.classList.add('ccbs-hidden');
 				this.weeklyBar.classList.add('ccbs-hidden');
 				this.weeklyResetMs = null;
@@ -632,6 +687,7 @@
 				this.weeklyBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 			}
 
+			this._updateUsageDetails();
 			this._updateMarkers();
 		}
 
@@ -677,14 +733,8 @@
 				this._renderHeader();
 			}
 
-			// Reset countdown text + time markers
-			if (this.sessionResetMs && this.sessionUsageBase) {
-				this.sessionUsageSpan.textContent = `${this.sessionUsageBase}${formatResetLabel(this.sessionResetMs)}`;
-			}
-
-			if (this.weeklyResetMs && this.weeklyUsageBase) {
-				this.weeklyUsageSpan.textContent = `${this.weeklyUsageBase}${formatResetLabel(this.weeklyResetMs)}`;
-			}
+			// Detailed countdowns are only rendered while expanded.
+			if (!this.detailsPanel.classList.contains('ccbs-hidden') || this.sessionGroup.matches(':hover, :focus') || this.weeklyGroup.matches(':hover, :focus')) this._updateUsageDetails();
 
 			this._updateMarkers();
 		}

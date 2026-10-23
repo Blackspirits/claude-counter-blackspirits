@@ -1,6 +1,6 @@
 # Beta testing / Testar a beta
 
-Version: **0.5.0-beta.2**. Status: candidate for live-account testing, not a stable release.
+Version: **0.5.0-beta.3**. Status: candidate for live-account testing, not a stable release.
 
 ## Automated evidence
 

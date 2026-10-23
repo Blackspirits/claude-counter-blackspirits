@@ -4,14 +4,14 @@
 
 Um fork do [Claude Counter](https://github.com/she-llac/claude-counter) para `claude.ai`, com foco na privacidade. Mantém os créditos originais e a licença MIT.
 
-**0.5.0-beta.2 — experimental, para testes antes de uma versão estável.**
+**0.5.0-beta.3 — experimental, para testes antes de uma versão estável.**
 
 ## Funcionalidades
 
 - Estimativa de tokens do texto visível no ramo atual da conversa.
 - Utilização da sessão e utilização semanal global, com horas de reposição obtidas nos endpoints web do Claude.
 - Estados visíveis de atualização, dados desatualizados, indisponibilidade e falta de acesso.
-- Botão de atualização e seletor de idioma acessíveis pelo teclado.
+- Resumo compacto com minibarras, botão de detalhes, atualização e idioma acessíveis pelo teclado. As horas de reposição, o estado de atualização e o aviso de atualizações limitadas ficam nos detalhes; as falhas também são assinaladas no botão.
 - Automático, português de Portugal, inglês, francês, espanhol, alemão e italiano.
 - Tokenização local, sem análise de utilização, serviços externos ou histórico de conversas guardado.
 
@@ -21,7 +21,7 @@ A estimativa utiliza o tokenizador genérico `o200k_base`, não o tokenizador of
 
 Requer Chrome/Edge/Chromium 111 ou posterior. Firefox, Claude Desktop e Claude Code não foram validados.
 
-1. Descarrega o artefacto `claude-counter-blackspirits-0.5.0-beta.2` de uma [execução do Actions](https://github.com/Blackspirits/claude-counter-blackspirits/actions) **concluída com sucesso**, ou cria o pacote localmente.
+1. Descarrega o artefacto `claude-counter-blackspirits-0.5.0-beta.3` de uma [execução do Actions](https://github.com/Blackspirits/claude-counter-blackspirits/actions) **concluída com sucesso**, ou cria o pacote localmente.
 2. Extrai o ZIP para uma pasta permanente.
 3. Abre `chrome://extensions` ou `edge://extensions` e ativa o **Modo de programador**.
 4. Escolhe **Carregar expandida** e seleciona a pasta que contém `manifest.json`.

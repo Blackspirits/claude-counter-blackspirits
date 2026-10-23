@@ -28,7 +28,9 @@
 		"statusUnavailable": "Indisponível · nova tentativa agendada",
 		"statusUnsupported": "Formato de utilização indisponível",
 		"transportNotice": "Atualizações em direto limitadas; podes atualizar manualmente",
-		"tokensUnavailable": "Estimativa de tokens indisponível"
+		"tokensUnavailable": "Estimativa de tokens indisponível",
+		"showDetails": "Mostrar detalhes",
+		"hideDetails": "Ocultar detalhes"
 	},
 	"en": {
 		"languageName": "English",
@@ -53,7 +55,9 @@
 		"statusUnavailable": "Unavailable · retry scheduled",
 		"statusUnsupported": "Usage format unavailable",
 		"transportNotice": "Limited live updates; refresh available",
-		"tokensUnavailable": "Token estimate unavailable"
+		"tokensUnavailable": "Token estimate unavailable",
+		"showDetails": "Show details",
+		"hideDetails": "Hide details"
 	},
 	"fr": {
 		"languageName": "Français",
@@ -78,7 +82,9 @@
 		"statusUnavailable": "Indisponible · nouvelle tentative prévue",
 		"statusUnsupported": "Format d’utilisation indisponible",
 		"transportNotice": "Mises à jour en direct limitées ; actualisation disponible",
-		"tokensUnavailable": "Estimation des tokens indisponible"
+		"tokensUnavailable": "Estimation des tokens indisponible",
+		"showDetails": "Afficher les détails",
+		"hideDetails": "Masquer les détails"
 	},
 	"es": {
 		"languageName": "Español",
@@ -103,7 +109,9 @@
 		"statusUnavailable": "No disponible · reintento programado",
 		"statusUnsupported": "Formato de uso no disponible",
 		"transportNotice": "Actualizaciones en directo limitadas; puedes actualizar manualmente",
-		"tokensUnavailable": "Estimación de tokens no disponible"
+		"tokensUnavailable": "Estimación de tokens no disponible",
+		"showDetails": "Mostrar detalles",
+		"hideDetails": "Ocultar detalles"
 	},
 	"de": {
 		"languageName": "Deutsch",
@@ -128,7 +136,9 @@
 		"statusUnavailable": "Nicht verfügbar · erneuter Versuch geplant",
 		"statusUnsupported": "Nutzungsformat nicht verfügbar",
 		"transportNotice": "Live-Aktualisierung eingeschränkt; manuelle Aktualisierung verfügbar",
-		"tokensUnavailable": "Token-Schätzung nicht verfügbar"
+		"tokensUnavailable": "Token-Schätzung nicht verfügbar",
+		"showDetails": "Details anzeigen",
+		"hideDetails": "Details ausblenden"
 	},
 	"it": {
 		"languageName": "Italiano",
@@ -153,7 +163,9 @@
 		"statusUnavailable": "Non disponibile · nuovo tentativo programmato",
 		"statusUnsupported": "Formato di utilizzo non disponibile",
 		"transportNotice": "Aggiornamenti in tempo reale limitati; aggiornamento manuale disponibile",
-		"tokensUnavailable": "Stima dei token non disponibile"
+		"tokensUnavailable": "Stima dei token non disponibile",
+		"showDetails": "Mostra dettagli",
+		"hideDetails": "Nascondi dettagli"
 	}
 });
 

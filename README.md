@@ -4,14 +4,14 @@
 
 A privacy-focused fork of [Claude Counter](https://github.com/she-llac/claude-counter) for `claude.ai`. Original credits and MIT licence are preserved.
 
-**0.5.0-beta.2 — experimental, for testing before a stable release.**
+**0.5.0-beta.3 — experimental, for testing before a stable release.**
 
 ## Features
 
 - Approximate token count for visible text in the current conversation branch.
 - Session and global weekly usage, with reset times from Claude's web endpoints.
 - Visible loading, updated, stale, unavailable and sign-in/access states.
-- Dedicated keyboard-accessible refresh button and language selector.
+- Compact summary with mini bars, a keyboard-accessible details toggle, refresh and language controls. Reset times, update status and the live-transport notice are available in the expanded details; attention states also appear on the toggle.
 - Auto, Portuguese (Portugal), English, French, Spanish, German and Italian.
 - Local tokenization, no analytics, no external services and no saved conversation history.
 
@@ -21,7 +21,7 @@ The token estimate uses a generic `o200k_base` tokenizer, not Claude's official 
 
 Chrome/Edge/Chromium 111 or newer is required. Firefox, Claude Desktop and Claude Code are not validated targets.
 
-1. Download the `claude-counter-blackspirits-0.5.0-beta.2` artifact from a **successful** [Actions run](https://github.com/Blackspirits/claude-counter-blackspirits/actions), or build locally below.
+1. Download the `claude-counter-blackspirits-0.5.0-beta.3` artifact from a **successful** [Actions run](https://github.com/Blackspirits/claude-counter-blackspirits/actions), or build locally below.
 2. Extract the ZIP into a permanent folder.
 3. Open `chrome://extensions` (or `edge://extensions`) and enable **Developer mode**.
 4. Choose **Load unpacked** and select the folder containing `manifest.json`.

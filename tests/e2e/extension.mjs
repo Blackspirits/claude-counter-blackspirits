@@ -27,7 +27,14 @@ try {
  assert.equal(await page.locator('.ccbs-refresh').getAttribute('type'), 'button');
  await page.locator('.ccbs-langChip').click(); await page.locator('.ccbs-langSelect').selectOption('pt-PT');
  await page.waitForFunction(() => document.querySelector('.ccbs-usageRow')?.textContent.includes('12,5%'));
- assert.match(await page.locator('.ccbs-status').first().innerText(), /Atualizado às/);
+ assert.equal(await page.locator('.ccbs-details').isVisible(), false, 'details are collapsed by default');
+ await page.locator('.ccbs-detailsToggle').press('Enter');
+ assert.equal(await page.locator('.ccbs-detailsToggle').getAttribute('aria-expanded'), 'true');
+ assert.match(await page.locator('.ccbs-status').innerText(), /Atualizado às/);
+ assert.match(await page.locator('.ccbs-details').innerText(), /repõe às/);
+ await page.locator('.ccbs-detailsToggle').press('Escape');
+ assert.equal(await page.locator('.ccbs-details').isVisible(), false);
+ assert.equal(await page.locator('.ccbs-detailsToggle').getAttribute('aria-expanded'), 'false');
  conversationText = 'Hello world';
  await page.evaluate(async () => { const response = await fetch('/api/organizations/A/chat_conversations/C/completion', { method: 'POST' }); await response.text(); });
  await page.waitForFunction(() => document.querySelector('.ccbs-usageRow')?.textContent.includes('25%'));
@@ -54,7 +61,8 @@ try {
  const placement = 'fieldset[data-perf-region="composer"] > .ccbs-usageRow';
  await page.locator(placement).waitFor();
  await page.evaluate(async () => { await fetch('/claudeai-rpc/Conversation/Stream'); });
- await page.locator('.ccbs-transportNotice:not(.ccbs-hidden)').waitFor();
+ await page.waitForFunction(() => document.querySelector('.ccbs-transportNotice')?.textContent.includes('limitadas'));
+ assert.equal(await page.locator('.ccbs-transportNotice').isVisible(), false, 'transport notice does not consume summary height');
  await fs.mkdir('test-results', { recursive: true });
  for (const [width, mode] of [[1074, 'dark'], [768, 'light'], [390, 'dark']]) {
   await page.setViewportSize({ width, height: 844 });
@@ -66,19 +74,24 @@ try {
    const groups = [...row.querySelectorAll('.ccbs-usageGroup')].map(group => {
     const text = group.querySelector('.ccbs-usageText').getBoundingClientRect();
     const bar = group.querySelector('.ccbs-bar').getBoundingClientRect();
-    return { clear: text.right <= bar.left, barX: bar.left };
+    return { clear: text.right <= bar.left, y: text.top };
    });
    return { below: rect.top >= chin.bottom, inside: rect.left >= 0 && rect.right <= innerWidth,
     fullWidth: rect.width >= document.querySelector('fieldset').getBoundingClientRect().width - 1,
-    groups, controlText: document.querySelector('[data-testid="mode-control"]').textContent };
+    height: rect.height, groups, controlText: document.querySelector('[data-testid="mode-control"]').textContent };
   });
   assert(layout.below && layout.inside && layout.fullWidth, `CDS counter placement at ${width}px`);
   assert(layout.groups.every(group => group.clear), 'text does not overlap bars');
-  assert(Math.abs(layout.groups[0].barX - layout.groups[1].barX) < 1, 'session and weekly bars align');
+  assert(Math.abs(layout.groups[0].y - layout.groups[1].y) < 1, 'session and weekly stay on one summary row');
+  assert(layout.height <= 30, `collapsed counter is at most 30px tall at ${width}px (got ${layout.height})`);
   assert.equal(layout.controlText, 'Manual');
   assert.equal(await page.locator('[data-cds="ChatComposerChin"] .ccbs-usageRow').count(), 0);
-  await page.screenshot({ path: `test-results/cds-${width}-${mode}.png` });
+  await page.screenshot({ path: `test-results/compact-${width}-${mode}.png` });
  }
+ await page.locator('.ccbs-detailsToggle').click();
+ assert(await page.locator('.ccbs-transportNotice').isVisible(), 'transport explanation remains accessible');
+ await page.screenshot({ path: 'test-results/compact-details-390.png' });
+ await page.locator('.ccbs-detailsToggle').click();
  // A connected counter can still be in the wrong place after host reparenting.
  await page.evaluate(() => document.querySelector('.native-control-row').appendChild(document.querySelector('.ccbs-usageRow')));
  await page.locator(placement).waitFor();
@@ -93,6 +106,9 @@ try {
  await page.evaluate(() => { document.cookie = 'lastActiveOrg=; path=/; max-age=0'; });
  await page.locator('.ccbs-usageRow[data-status="signedOut"]').waitFor();
  assert(await page.locator('.ccbs-refresh').isVisible()); assert(await page.locator('.ccbs-langChip').isVisible());
+ assert.equal(await page.locator('.ccbs-detailsToggle').innerText(), '!', 'access errors remain visible in collapsed mode');
+ await page.locator('.ccbs-detailsToggle').click();
+ assert.match(await page.locator('.ccbs-details').innerText(), /Inicia sessão/);
  assert.deepEqual(errors, []); assert(calls.every(url => new URL(url).hostname === 'claude.ai'));
- console.log('Extension E2E passed: real MV3 loading, strict CSP, handshake, tokens, usage, pt-PT, SSE completion refresh, CDS composer placement at 1074/768/390px, dark/light themes, reparenting/replacement, SPA/org switch and logout.');
+ console.log('Extension E2E passed: real MV3 loading, strict CSP, handshake, tokens, usage, pt-PT, SSE completion refresh, compact <=30px CDS summary at 1074/768/390px, keyboard details toggle, visible error indicator, dark/light themes, reparenting/replacement, SPA/org switch and logout.');
 } finally { await context.close(); }
