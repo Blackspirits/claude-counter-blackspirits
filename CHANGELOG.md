@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.5.0-beta.3 — 2026-10-23
+
+- Reduce the default counter to a compact summary with session/weekly percentages, mini bars and controls on one row when space permits.
+- Move reset times, the last update and the live-transport notice into a keyboard-accessible expandable details panel.
+- Keep stale/access/error states discoverable through an attention indicator; preserve reset details in hover/focus tooltips.
+
+
+## 0.5.0-beta.2 — 2026-10-23
+
+- Place usage indicators below the complete CDS composer group instead of inside the model-selector row.
+- Align both usage bars in a dedicated responsive layout; keep refresh/language controls together and the live-update notice on its own line.
+- Repair placement after composer replacement, reparenting or legacy-to-CDS navigation.
+- Add a sanitized structural fixture based on a real-account composer report and browser assertions for layout, native controls and reinsertion.
+
+
+## 0.5.0-beta.1 — 2026-10-23
+
+- Add organization-scoped usage state, per-window stale-response guards, partial updates and validated dates.
+- Bound retries with backoff, Retry-After and auth pauses; retain a five-minute visible-tab fallback.
+- Start the MAIN-world bridge at document_start with a handshake, sequenced conversation responses and bounded observation.
+- Handle special tokenizer markers as text; reject cyclic, incomplete and oversized input explicitly.
+- Show visible status/refresh controls; preserve language choice when storage is blocked and format numbers in the selected locale.
+- Remove the unverified fixed context-capacity bar and inferred cache countdown.
+- Add regression tests, packaged-extension Chromium coverage and a minimal installable artifact.
+- Keep Connect/protobuf decoding and real-account compatibility as explicit beta limitations.
+
+
 ## v0.4.8 - Release-ready cleanup
 
 - Split documentation into `README.md` (English, primary) and `README.pt-PT.md` (Portuguese Portugal).

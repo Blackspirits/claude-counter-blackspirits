@@ -1,5 +1,7 @@
 # Auditoria BlackSpirits - Claude Counter
 
+> Historical audit for the 0.4.x implementation. See BETA_TESTING.md and CHANGELOG.md for 0.5.0-beta.3; this document is not a certification of the beta.
+
 ## Veredicto
 
 Fork recomendado para uso pessoal no browser, desde que seja tratado como extensão de confiança elevada porque corre dentro de `claude.ai`.

@@ -2,156 +2,76 @@
 
 [English](README.md)
 
-Fork do [Claude Counter](https://github.com/she-llac/claude-counter), focado em privacidade, para `claude.ai` no navegador.
+Um fork do [Claude Counter](https://github.com/she-llac/claude-counter) para `claude.ai`, com foco na privacidade. Mantém os créditos originais e a licença MIT.
 
-Adiciona indicadores leves de contexto e utilização diretamente na interface web do Claude, mantendo a extensão pequena, local e fácil de auditar.
-
-> Créditos originais e licença MIT mantidos.
+**0.5.0-beta.3 — experimental, para testes antes de uma versão estável.**
 
 ## Funcionalidades
 
-- **Contador aproximado de tokens** da conversa atual.
-- **Barra de contexto** com referência ao limite de 200k tokens.
-- **Temporizador de cache** da conversa ativa.
-- **Utilização da sessão de 5 horas** com hora de reposição e contagem decrescente.
-- **Utilização semanal** com hora de reposição e contagem decrescente.
-- **Interface multilingue**: Automático, Português (Portugal), Inglês, Francês, Espanhol, Alemão e Italiano.
-- **Botão compacto de idioma** após seleção (`AUTO`, `PT`, `EN`, `FR`, etc.).
-- **Otimização em separadores ocultos** para evitar trabalho desnecessário em segundo plano.
-- **Atualização por teclado** na linha de utilização.
-- **Sem analytics, sem pedidos a terceiros, sem `chrome.storage`** na versão de extensão.
+- Estimativa de tokens do texto visível no ramo atual da conversa.
+- Utilização da sessão e utilização semanal global, com horas de reposição obtidas nos endpoints web do Claude.
+- Estados visíveis de atualização, dados desatualizados, indisponibilidade e falta de acesso.
+- Resumo compacto com minibarras, botão de detalhes, atualização e idioma acessíveis pelo teclado. As horas de reposição, o estado de atualização e o aviso de atualizações limitadas ficam nos detalhes; as falhas também são assinaladas no botão.
+- Automático, português de Portugal, inglês, francês, espanhol, alemão e italiano.
+- Tokenização local, sem análise de utilização, serviços externos ou histórico de conversas guardado.
 
-## O que mudou nesta fork
+A estimativa utiliza o tokenizador genérico `o200k_base`, não o tokenizador oficial do Claude. Exclui instruções ocultas e conteúdo não textual. A beta remove a barra de contexto fixada em 200 mil tokens e o temporizador de cache inferido, pois faltavam dados confirmados da conta e do modelo para os sustentar. Não mede o contexto restante nem deteta a compactação.
 
-Esta edição BlackSpirits mantém a ideia original, mas reforça e moderniza a implementação:
+## Instalar a beta
 
-- namespace interno isolado para reduzir risco de colisão com a extensão original;
-- validação mais apertada de origem no `postMessage`;
-- URLs internas do Claude usam IDs de organização/conversa codificados;
-- dados de utilização não são aplicados se a organização ativa mudar durante um pedido;
-- hashing de conversa/tokens fica no content script isolado;
-- melhor extração de texto de payloads de ferramentas e pesquisa web;
-- documentação de privacidade, segurança e auditoria mais clara;
-- validação básica e workflow de GitHub Actions.
+Requer Chrome/Edge/Chromium 111 ou posterior. Firefox, Claude Desktop e Claude Code não foram validados.
 
-## Instalação
+1. Descarrega o artefacto `claude-counter-blackspirits-0.5.0-beta.3` de uma [execução do Actions](https://github.com/Blackspirits/claude-counter-blackspirits/actions) **concluída com sucesso**, ou cria o pacote localmente.
+2. Extrai o ZIP para uma pasta permanente.
+3. Abre `chrome://extensions` ou `edge://extensions` e ativa o **Modo de programador**.
+4. Escolhe **Carregar expandida** e seleciona a pasta que contém `manifest.json`.
+5. Recarrega `https://claude.ai`. Desativa outras instalações do Claude Counter durante o teste para evitar indicadores duplicados.
 
-### Chrome / Edge / Chromium
+Para atualizar, substitui os ficheiros na mesma pasta, clica em Recarregar no cartão da extensão e recarrega o Claude. Não existe atualização automática nem painel no ícone da barra de ferramentas.
 
-1. Descarrega o ZIP da release.
-2. Extrai para uma pasta fixa, por exemplo:
+## Fiabilidade e limitações
 
-   ```text
-   C:\Tools\claude-counter-blackspirits
-   ```
+- A utilização pertence à organização ativa. Mudar de organização ou terminar sessão limpa os dados anteriores.
+- Atualizações SSE parciais preservam as restantes janelas; pedidos antigos não substituem valores mais recentes da mesma janela.
+- A utilização é consultada a cada cinco minutos nos separadores visíveis. A reposição de uma janela pode antecipar uma consulta.
+- As falhas adiam as novas tentativas entre um minuto e cerca de 30 minutos, com uma pequena variação aleatória. O erro HTTP 429 respeita `Retry-After`. Os erros HTTP 401/403 suspendem as tentativas automáticas; podes tentar manualmente após um minuto.
+- As horas de reposição são apresentadas ao minuto, sem arredondamento para intervalos de cinco minutos. Os valores cuja janela terminou ficam assinalados como desatualizados.
+- As atualizações Connect/protobuf **não são descodificadas**. A deteção apresenta um aviso; a consulta REST alternativa depende da disponibilidade dos endpoints internos do Claude.
+- Mudanças no HTML podem impedir a inserção dos indicadores. Formatos desconhecidos mostram indisponibilidade, sem inventar um valor zero.
+- Limites de processamento: 8 MiB por resposta observada, 10 mil mensagens, 250 mil carateres por mensagem contada e 2 milhões de carateres por cálculo. Acima destes limites, a estimativa fica indisponível.
+- Os contadores não substituem a página de utilização do Claude. Os testes com dados sintéticos não confirmam os endpoints, limites ou disposição atuais de todas as contas reais.
 
-3. Abre:
+## Idioma e privacidade
 
-   ```text
-   chrome://extensions
-   ```
+O seletor guarda apenas a preferência `claude-counter-blackspirits-language` no localStorage de `claude.ai`. Automático remove essa preferência. Se o armazenamento estiver bloqueado, a escolha mantém-se até recarregares a página.
 
-4. Ativa o **Modo de programador**.
-5. Clica em **Carregar sem compactação**.
-6. Escolhe a pasta onde está o `manifest.json`.
-7. Recarrega `https://claude.ai`.
-
-Não apagues a pasta depois. O Chromium lê a extensão diretamente dessa pasta.
-
-## Utilização recomendada
-
-Usa os contadores como indicador prático, não como fonte oficial dos limites do Claude.
-
-Os dados de utilização vêm da própria sessão web do Claude, mas a contagem de tokens continua a ser aproximada. Para limites importantes, compara com o painel nativo de utilização do Claude.
-
-## Seleção de idioma
-
-A interface injetada inclui um pequeno seletor de idioma. Depois de escolheres um idioma, recolhe para um botão compacto:
-
-```text
-AUTO / PT / EN / FR / ES / DE / IT
-```
-
-Clica no botão para abrir novamente o seletor.
-
-O idioma escolhido fica guardado localmente em `https://claude.ai`:
-
-```text
-claude-counter-blackspirits-language
-```
-
-Ao escolher `Automático`, essa chave é removida.
-
-## Privacidade
-
-A versão de extensão:
-
-- corre apenas em `https://claude.ai/*`;
-- não envia prompts, respostas ou conversas para servidores externos;
-- não usa analytics;
-- não usa `chrome.storage`;
-- não guarda histórico local de utilização;
-- usa `localStorage` apenas para a preferência opcional de idioma;
-- faz pedidos apenas a `claude.ai`, usando a sessão já ativa no navegador.
-
-Consulta [PRIVACY.md](PRIVACY.md) para mais detalhes.
-
-## Limitações conhecidas
-
-- A contagem de tokens é estimada, não é a contagem oficial do Claude.
-- Pesquisa web, ficheiros, imagens e outputs de ferramentas ainda podem ficar subcontados.
-- Depois de compactação de contexto, a barra de tokens pode deixar de representar o contexto efetivo completo.
-- A extensão foi pensada para `claude.ai` no navegador.
-- Claude Desktop, Claude Code no terminal e `claude.ai/code` não são oficialmente suportados.
-- Alterações na UI ou nos endpoints internos do Claude podem partir seletores ou pressupostos internos.
+A extensão funciona apenas em `https://claude.ai/*`, lê o cookie `lastActiveOrg` e faz pedidos GET com a sessão existente do Claude. O texto das conversas é processado localmente. Consulta [PRIVACY.md](PRIVACY.md) e [SECURITY.md](SECURITY.md).
 
 ## Desenvolvimento
 
-Valida a extensão antes de fazer commit:
+Node.js 22 ou posterior:
 
 ```bash
+npm ci --ignore-scripts
 npm run validate
+npm test
+npm run package
+npx playwright install chromium
+npm run test:e2e
 ```
 
-A validação verifica:
+O comando `npm run package` cria `dist/claude-counter-blackspirits/`, pronta para instalação. O pacote contém apenas os recursos referenciados pelo manifesto, traduções e avisos de licença/privacidade. O Playwright é uma dependência de desenvolvimento e não acompanha a extensão.
 
-- estrutura do manifesto e alinhamento de versões;
-- origens permitidas e ausência de permissões extra;
-- ficheiros de idioma;
-- sintaxe JavaScript;
-- isolamento do bridge;
-- separação da documentação em inglês e pt-PT.
+O teste de navegador carrega a **extensão MV3 empacotada** num contexto persistente do Chromium, com uma página Claude sintética e respostas simuladas. Verifica o arranque, CSP restritiva, comunicação entre os contextos, utilização/tokens, pt-PT, ecrã estreito, navegação, mudança de organização e fim de sessão. Não utiliza uma conta Claude nem conversas reais.
 
-## Estrutura do projeto
+Consulta [BETA_TESTING.md](BETA_TESTING.md) para os testes restantes numa conta real.
 
-```text
-src/content/        Content scripts isolados e lógica da UI
-src/injected/       Bridge em contexto de página para observar eventos de rede do Claude
-src/vendor/         Tokenizer incluído localmente
-_locales/           Traduções do manifesto da extensão
-.github/workflows/  Workflow de validação
-```
+## Estrutura e licença
 
-## Estado do userscript
+- `src/content/`: interface isolada, estado de utilização, localização e tokenização.
+- `src/injected/`: observação inicial de fetch/history no contexto da página e pedidos GET limitados.
+- `src/vendor/`: tokenizador incluído, com o aviso MIT existente.
+- `tests/`: regressões e teste da extensão no Chromium.
+- `userscript/`: referência histórica; excluída do pacote beta.
 
-A versão userscript fica apenas como referência legacy.
-
-Para utilização normal, instala a extensão. A extensão inclui o tokenizer localmente e é mais fácil de auditar.
-
-## Segurança
-
-Trata isto como código de confiança elevada: corre dentro de `claude.ai` e consegue ler dados da página nessa origem.
-
-Revê pelo menos estes ficheiros antes de distribuíres uma build:
-
-- `manifest.json`
-- `src/injected/bridge.js`
-- `src/content/bridge-client.js`
-- `src/content/tokens.js`
-- `src/content/main.js`
-
-Consulta [SECURITY.md](SECURITY.md).
-
-## Licença
-
-MIT. Os créditos originais do Claude Counter são mantidos.
+MIT. Consulta [LICENSE](LICENSE) e [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -41,9 +41,7 @@
 	function formatResetTime(timestampMs) {
 		if (!timestampMs) return '';
 
-		// Claude's native usage UI is rounded, so keep display stable around 5-minute boundaries.
-		const fiveMinutesMs = 5 * 60 * 1000;
-		const resetDate = new Date(Math.round(timestampMs / fiveMinutesMs) * fiveMinutesMs);
+		const resetDate = new Date(timestampMs);
 		const now = new Date();
 		const diffMs = resetDate.getTime() - now.getTime();
 
@@ -67,16 +65,19 @@
 		return CC.i18n.t('resetLabel', { time: formatResetTime(timestampMs), countdown: formatResetCountdown(timestampMs) });
 	}
 
-	function setupTooltip(element, tooltip, { topOffset = 10 } = {}) {
+	function setupTooltip(element, tooltip, { topOffset = 10, onShow } = {}) {
 		if (!element || !tooltip) return;
 		if (element.hasAttribute('data-tooltip-setup')) return;
 		element.setAttribute('data-tooltip-setup', 'true');
 		element.classList.add('ccbs-tooltipTrigger');
+		element.tabIndex = 0;
+		element.setAttribute('aria-describedby', tooltip.id);
 
 		let pressTimer;
 		let hideTimer;
 
 		const show = () => {
+			onShow?.();
 			const rect = element.getBoundingClientRect();
 			tooltip.style.opacity = '1';
 			const tipRect = tooltip.getBoundingClientRect();
@@ -98,6 +99,9 @@
 			clearTimeout(hideTimer);
 		};
 
+		element.addEventListener('focus', show);
+		element.addEventListener('blur', hide);
+		element.addEventListener('keydown', event => { if (event.key === 'Escape') hide(); });
 		element.addEventListener('pointerdown', (e) => {
 			if (e.pointerType === 'touch' || e.pointerType === 'pen') {
 				pressTimer = setTimeout(() => {
@@ -122,9 +126,12 @@
 		});
 	}
 
+	let tooltipId = 0;
 	function makeTooltip(text) {
 		const tip = document.createElement('div');
 		tip.className = 'bg-bg-500 text-text-000 ccbs-tooltip';
+		tip.id = `ccbs-tooltip-${++tooltipId}`;
+		tip.setAttribute('role', 'tooltip');
 		tip.textContent = text;
 		document.body.appendChild(tip);
 		return tip;
@@ -237,7 +244,7 @@
 			let headerReattachPending = false;
 
 			this.domObserver = new MutationObserver(() => {
-				const usageMissing = this.usageLine && !document.contains(this.usageLine);
+				const usageMissing = this.usageLine && !this._isUsagePlaced();
 				const headerMissing = !document.contains(this.headerContainer);
 
 				if (usageMissing && !usageReattachPending) {
@@ -262,11 +269,18 @@
 		_initUsageLine() {
 			this.usageLine = document.createElement('div');
 			this.usageLine.className =
-				'text-text-400 text-[11px] ccbs-usageRow ccbs-hidden flex flex-row items-center gap-3 w-full';
-			this.usageLine.tabIndex = 0;
-			this.usageLine.setAttribute('role', 'button');
-			this.usageLine.title = CC.i18n.t('refreshUsageTitle');
-			this.usageLine.setAttribute('aria-label', CC.i18n.t('refreshUsageTitle'));
+				'text-text-400 ccbs-usageRow';
+			this.statusSpan = document.createElement('span');
+			this.statusSpan.className = 'ccbs-status';
+			this.statusSpan.setAttribute('role', 'status');
+			this.transportSpan = document.createElement('span');
+			this.transportSpan.className = 'ccbs-transportNotice ccbs-hidden';
+			this.refreshButton = document.createElement('button');
+			this.refreshButton.type = 'button';
+			this.refreshButton.className = 'ccbs-refresh';
+			this.refreshButton.textContent = '↻';
+			this.refreshButton.addEventListener('click', () => this._refreshUsageFromUi());
+
 
 			this.sessionUsageSpan = document.createElement('span');
 			this.sessionUsageSpan.className = 'ccbs-usageText';
@@ -301,34 +315,55 @@
 
 			this.weeklyGroup = document.createElement('div');
 			this.weeklyGroup.className = 'ccbs-usageGroup ccbs-usageGroup--weekly';
-			this.weeklyGroup.appendChild(this.weeklyBar);
 			this.weeklyGroup.appendChild(this.weeklyUsageSpan);
+			this.weeklyGroup.appendChild(this.weeklyBar);
 
 			this.languageSwitcher = this._createLanguageSwitcher();
 
-			this.usageLine.appendChild(this.sessionGroup);
-			this.usageLine.appendChild(this.weeklyGroup);
-			this.usageLine.appendChild(this.languageSwitcher);
+			this.detailsPanel = document.createElement('div');
+			this.detailsPanel.id = 'ccbs-usage-details';
+			this.detailsPanel.className = 'ccbs-details ccbs-hidden';
+			this.sessionDetails = document.createElement('span');
+			this.weeklyDetails = document.createElement('span');
+			this.detailsPanel.append(this.sessionDetails, this.weeklyDetails, this.statusSpan, this.transportSpan);
+			this.detailsToggle = document.createElement('button');
+			this.detailsToggle.type = 'button';
+			this.detailsToggle.className = 'ccbs-detailsToggle';
+			this.detailsToggle.setAttribute('aria-controls', this.detailsPanel.id);
+			this.detailsToggle.setAttribute('aria-expanded', 'false');
+			this.detailsToggle.addEventListener('click', () => this._setDetailsOpen(this.detailsPanel.classList.contains('ccbs-hidden')));
+			this.usageLine.addEventListener('keydown', event => {
+				if (event.key === 'Escape' && this.detailsToggle.getAttribute('aria-expanded') === 'true') {
+					event.stopPropagation();
+					this._setDetailsOpen(false);
+					this.detailsToggle.focus();
+				}
+			});
+			const controls = document.createElement('div');
+			controls.className = 'ccbs-controls';
+			controls.append(this.detailsToggle, this.refreshButton, this.languageSwitcher);
+			const summary = document.createElement('div');
+			summary.className = 'ccbs-usageSummary';
+			summary.append(this.sessionGroup, this.weeklyGroup, controls);
+			this.usageLine.append(summary, this.detailsPanel);
+			this._updateDetailsButton();
+
 
 			this.refreshProgressChrome();
 
-			this.usageLine.addEventListener('click', () => this._refreshUsageFromUi());
-			this.usageLine.addEventListener('keydown', (event) => {
-				if (event.key !== 'Enter' && event.key !== ' ') return;
-				event.preventDefault();
-				this._refreshUsageFromUi();
-			});
 		}
 
 		async _refreshUsageFromUi() {
 			if (!this.onUsageRefresh || this.refreshingUsage) return;
 			this.refreshingUsage = true;
+			this.refreshButton.disabled = true;
 			this.usageLine.classList.add('ccbs-usageRow--dim');
 			try {
 				await this.onUsageRefresh();
 			} finally {
 				this.usageLine.classList.remove('ccbs-usageRow--dim');
 				this.refreshingUsage = false;
+				this.refreshButton.disabled = false;
 			}
 		}
 
@@ -425,8 +460,8 @@
 				this.languageChip.setAttribute('aria-label', `${title}: ${this.languageChip.textContent}`);
 			}
 			if (this.usageLine) {
-				this.usageLine.title = CC.i18n.t('refreshUsageTitle');
-				this.usageLine.setAttribute('aria-label', CC.i18n.t('refreshUsageTitle'));
+				this.refreshButton.title = CC.i18n.t('refreshUsageTitle');
+				this.refreshButton.setAttribute('aria-label', CC.i18n.t('refreshUsageTitle'));
 			}
 		}
 
@@ -435,6 +470,9 @@
 			this._setupTooltips(true);
 			if (this.currentMetrics) this.setConversationMetrics(this.currentMetrics);
 			if (this.currentUsage) this.setUsage(this.currentUsage);
+			if (this.usageStatus) this.setUsageStatus(this.usageStatus);
+			if (this.transportLimited) this.setTransportNotice(true);
+			this._updateDetailsButton();
 		}
 
 		_setupTooltips(refreshOnly = false) {
@@ -442,17 +480,13 @@
 			this.lengthTooltip.textContent = CC.i18n.t('tooltipTokens');
 			setupTooltip(this.lengthGroup, this.lengthTooltip, { topOffset: 8 });
 
-			if (!this.cacheTooltip) this.cacheTooltip = makeTooltip('');
-			this.cacheTooltip.textContent = CC.i18n.t('tooltipCache');
-			setupTooltip(this.cachedDisplay, this.cacheTooltip, { topOffset: 8 });
-
 			if (!this.sessionTooltip) this.sessionTooltip = makeTooltip('');
 			this.sessionTooltip.textContent = CC.i18n.t('tooltipSession');
-			setupTooltip(this.sessionGroup, this.sessionTooltip, { topOffset: 8 });
+			setupTooltip(this.sessionGroup, this.sessionTooltip, { topOffset: 8, onShow: () => this._updateUsageDetails() });
 
 			if (!this.weeklyTooltip) this.weeklyTooltip = makeTooltip('');
 			this.weeklyTooltip.textContent = CC.i18n.t('tooltipWeekly');
-			setupTooltip(this.weeklyGroup, this.weeklyTooltip, { topOffset: 8 });
+			setupTooltip(this.weeklyGroup, this.weeklyTooltip, { topOffset: 8, onShow: () => this._updateUsageDetails() });
 		}
 
 		attach() {
@@ -473,35 +507,33 @@
 			this.refreshProgressChrome();
 		}
 
+		_getUsagePlacement() {
+			const modelSelector = document.querySelector(CC.DOM.MODEL_SELECTOR_DROPDOWN);
+			if (!modelSelector) return null;
+			// CDS controls contain nested horizontal rows and clipped containers.
+			// Append to the full composer group, outside every native control row.
+			const host = modelSelector.closest('fieldset[data-perf-region="composer"]') ||
+				modelSelector.closest('[data-cds="ChatComposer"]');
+			if (host) return { host };
+			const anchor = modelSelector.closest('[data-testid="chat-input-grid-area"]') ||
+				modelSelector.closest('[data-testid="chat-input-grid-container"]');
+			return anchor?.parentElement ? { host: anchor.parentElement, anchor } : null;
+		}
+
+		_isUsagePlaced() {
+			const placement = this._getUsagePlacement();
+			if (!placement) return document.contains(this.usageLine);
+			return this.usageLine.parentElement === placement.host &&
+				(!placement.anchor || placement.anchor.nextElementSibling === this.usageLine);
+		}
+
 		attachUsageLine() {
 			if (!this.usageLine) return;
-			const modelSelector = document.querySelector(CC.DOM.MODEL_SELECTOR_DROPDOWN);
-			if (!modelSelector) return;
-			const gridContainer = modelSelector.closest('[data-testid="chat-input-grid-container"]');
-			const gridArea = modelSelector.closest('[data-testid="chat-input-grid-area"]');
-			const findToolbarRow = (el, stopAt) => {
-				let cur = el;
-				while (cur && cur !== document.body) {
-					if (stopAt && cur === stopAt) break;
-					if (cur !== el && cur.nodeType === 1) {
-						const style = window.getComputedStyle(cur);
-						if (style.display === 'flex' && style.flexDirection === 'row') {
-							const buttons = cur.querySelectorAll('button').length;
-							if (buttons > 1) return cur;
-						}
-					}
-					cur = cur.parentElement;
-				}
-				return null;
-			};
-
-			const toolbarRow =
-				(gridContainer ? findToolbarRow(modelSelector, gridArea || gridContainer) : null) ||
-				findToolbarRow(modelSelector) ||
-				modelSelector.parentElement?.parentElement?.parentElement;
-			if (!toolbarRow) return;
-			if (toolbarRow.nextElementSibling !== this.usageLine) {
-				toolbarRow.after(this.usageLine);
+			const placement = this._getUsagePlacement();
+			if (!placement) return;
+			if (!this._isUsagePlaced()) {
+				if (placement.anchor) placement.anchor.after(this.usageLine);
+				else placement.host.appendChild(this.usageLine);
 			}
 			this.refreshProgressChrome();
 		}
@@ -518,67 +550,63 @@
 			}
 		}
 
-		setConversationMetrics({ totalTokens, cachedUntil } = {}) {
-			this.currentMetrics = typeof totalTokens === 'number' ? { totalTokens, cachedUntil } : null;
+		setConversationMetrics({ totalTokens, unavailable = false } = {}) {
+			this.currentMetrics = Number.isFinite(totalTokens) ? { totalTokens } : unavailable ? { unavailable } : null;
 			this.pendingCache = false;
-
-			if (typeof totalTokens !== 'number') {
-				this.lengthDisplay.textContent = '';
-				this.cachedDisplay.textContent = '';
-				this.lastCachedUntilMs = null;
-				this._renderHeader();
-				return;
-			}
-
-			const pct = Math.max(0, Math.min(100, (totalTokens / CC.CONST.CONTEXT_LIMIT_TOKENS) * 100));
-			this.lengthDisplay.textContent = `~${totalTokens.toLocaleString()} ${CC.i18n.t('tokens')}`;
-
-			// Mini bar (hide when full - context is definitely compacted by then)
-			const isFull = pct >= 99.5;
-			if (isFull) {
-				this.lengthDisplay.style.opacity = '0.5';
-				this.lengthBar = null;
-				this.lengthGroup.replaceChildren(this.lengthDisplay);
-				if (this.lengthTooltip) {
-					this.lengthTooltip.textContent = CC.i18n.t('tooltipTokensCompacted');
-				}
-			} else {
-				this.lengthDisplay.style.opacity = '';
-				const bar = document.createElement('div');
-				bar.className = 'ccbs-bar ccbs-bar--mini';
-				this.lengthBar = bar;
-				const fill = document.createElement('div');
-				fill.className = 'ccbs-bar__fill';
-				fill.style.width = `${pct}%`;
-				bar.appendChild(fill);
-				this.refreshProgressChrome();
-
-				const barContainer = document.createElement('span');
-				barContainer.className = 'inline-flex items-center';
-				barContainer.appendChild(bar);
-
-				this.lengthGroup.replaceChildren(this.lengthDisplay, document.createTextNode('\u00A0\u00A0'), barContainer);
-			}
-
-			// Cache timer
-			const now = Date.now();
-			if (typeof cachedUntil === 'number' && cachedUntil > now) {
-				this.lastCachedUntilMs = cachedUntil;
-				const secondsLeft = Math.max(0, Math.ceil((cachedUntil - now) / 1000));
-				const { boldColor } = this.getProgressChrome();
-				this.cacheTimeSpan = Object.assign(document.createElement('span'), {
-					className: 'ccbs-cacheTime',
-					textContent: formatSeconds(secondsLeft)
-				});
-				this.cacheTimeSpan.style.color = boldColor;
-				this.cachedDisplay.replaceChildren(document.createTextNode(`${CC.i18n.t('cachedFor')}\u00A0`), this.cacheTimeSpan);
-			} else {
-				this.lastCachedUntilMs = null;
-				this.cacheTimeSpan = null;
-				this.cachedDisplay.textContent = '';
-			}
-
+			this.lastCachedUntilMs = null;
+			this.cachedDisplay.textContent = '';
+			this.lengthDisplay.textContent = Number.isFinite(totalTokens)
+				? `~${totalTokens.toLocaleString(CC.i18n.getLocale())} ${CC.i18n.t('tokens')}`
+				: unavailable ? CC.i18n.t('tokensUnavailable') : '';
+			// No verified model limit or cache signal is available from this payload.
+			this.lengthBar = null;
+			this.lengthGroup.replaceChildren(this.lengthDisplay);
 			this._renderHeader();
+		}
+
+		_setDetailsOpen(open) {
+			this.detailsPanel.classList.toggle('ccbs-hidden', !open);
+			this.detailsToggle.setAttribute('aria-expanded', String(open));
+			this._updateUsageDetails();
+			this._updateDetailsButton();
+		}
+
+		_updateDetailsButton() {
+			if (!this.detailsToggle) return;
+			const open = this.detailsToggle.getAttribute('aria-expanded') === 'true';
+			const needsAttention = ['stale', 'unavailable', 'signedOut', 'unsupported'].includes(this.usageStatus?.status);
+			this.detailsToggle.textContent = open ? '⌃' : needsAttention ? '!' : '⌄';
+			this.detailsToggle.classList.toggle('ccbs-needsAttention', needsAttention);
+			const label = CC.i18n.t(open ? 'hideDetails' : 'showDetails');
+			const status = this.statusSpan.textContent;
+			this.detailsToggle.title = status ? `${label} · ${status}` : label;
+			this.detailsToggle.setAttribute('aria-label', this.detailsToggle.title);
+		}
+
+		_updateUsageDetails() {
+			const session = this.sessionUsageBase ? `${this.sessionUsageBase}${this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : ''}` : '';
+			const weekly = this.weeklyUsageBase ? `${this.weeklyUsageBase}${this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : ''}` : '';
+			this.sessionDetails.textContent = session;
+			this.weeklyDetails.textContent = weekly;
+			this.sessionDetails.classList.toggle('ccbs-hidden', !session);
+			this.weeklyDetails.classList.toggle('ccbs-hidden', !weekly);
+			if (this.sessionTooltip) this.sessionTooltip.textContent = [session, CC.i18n.t('tooltipSession')].filter(Boolean).join('\n');
+			if (this.weeklyTooltip) this.weeklyTooltip.textContent = [weekly, CC.i18n.t('tooltipWeekly')].filter(Boolean).join('\n');
+		}
+
+		setTransportNotice(limited) {
+			this.transportLimited = limited;
+			this.transportSpan.textContent = limited ? CC.i18n.t('transportNotice') : '';
+			this.transportSpan.classList.toggle('ccbs-hidden', !limited);
+		}
+
+		setUsageStatus(status) {
+			this.usageStatus = status;
+			const key = `status${status.status[0].toUpperCase()}${status.status.slice(1)}`;
+			const time = status.updatedAt ? new Date(status.updatedAt).toLocaleTimeString(CC.i18n.getLocale(), { hour: '2-digit', minute: '2-digit' }) : '—';
+			this.statusSpan.textContent = CC.i18n.t(key, { time });
+			this.usageLine.dataset.status = status.status;
+			this._updateDetailsButton();
 		}
 
 		_renderHeader() {
@@ -608,18 +636,15 @@
 			this.refreshProgressChrome();
 			const session = usage?.five_hour || null;
 			const weekly = usage?.seven_day || null;
-			const hasAnyUsage =
-				!!(session && typeof session.utilization === 'number') || !!(weekly && typeof weekly.utilization === 'number');
-			this.usageLine?.classList.toggle('ccbs-hidden', !hasAnyUsage);
+			this.sessionGroup.classList.toggle('ccbs-hidden', !session);
 
 			if (session && typeof session.utilization === 'number') {
 				const rawPct = session.utilization;
 				const pct = Math.round(rawPct * 10) / 10;
 				this.sessionResetMs = session.resets_at ? Date.parse(session.resets_at) : null;
 				this.sessionWindowStartMs = this.sessionResetMs ? this.sessionResetMs - 5 * 60 * 60 * 1000 : null;
-				const resetText = this.sessionResetMs ? formatResetLabel(this.sessionResetMs) : '';
-				this.sessionUsageBase = CC.i18n.t('sessionUsage', { pct });
-				this.sessionUsageSpan.textContent = `${this.sessionUsageBase}${resetText}`;
+				this.sessionUsageBase = CC.i18n.t('sessionUsage', { pct: pct.toLocaleString(CC.i18n.getLocale(), { maximumFractionDigits: 1 }) });
+				this.sessionUsageSpan.textContent = this.sessionUsageBase;
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.sessionBarFill.style.width = `${width}%`;
@@ -627,6 +652,7 @@
 				this.sessionBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
 				this.sessionUsageSpan.textContent = '';
+				this.sessionUsageBase = '';
 				this.sessionBarFill.style.width = '0%';
 				this.sessionBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 				this.sessionResetMs = null;
@@ -645,15 +671,15 @@
 				const pct = Math.round(rawPct * 10) / 10;
 				this.weeklyResetMs = weekly.resets_at ? Date.parse(weekly.resets_at) : null;
 				this.weeklyWindowStartMs = this.weeklyResetMs ? this.weeklyResetMs - 7 * 24 * 60 * 60 * 1000 : null;
-				const resetText = this.weeklyResetMs ? formatResetLabel(this.weeklyResetMs) : '';
-				this.weeklyUsageBase = CC.i18n.t('weeklyUsage', { pct });
-				this.weeklyUsageSpan.textContent = `${this.weeklyUsageBase}${resetText}`;
+				this.weeklyUsageBase = CC.i18n.t('weeklyUsage', { pct: pct.toLocaleString(CC.i18n.getLocale(), { maximumFractionDigits: 1 }) });
+				this.weeklyUsageSpan.textContent = this.weeklyUsageBase;
 
 				const width = Math.max(0, Math.min(100, rawPct));
 				this.weeklyBarFill.style.width = `${width}%`;
 				this.weeklyBarFill.classList.toggle('ccbs-warn', width >= 90);
 				this.weeklyBarFill.classList.toggle('ccbs-full', width >= 99.5);
 			} else {
+				this.weeklyUsageBase = '';
 				this.weeklyUsageSpan.classList.add('ccbs-hidden');
 				this.weeklyBar.classList.add('ccbs-hidden');
 				this.weeklyResetMs = null;
@@ -661,6 +687,7 @@
 				this.weeklyBarFill.classList.remove('ccbs-warn', 'ccbs-full');
 			}
 
+			this._updateUsageDetails();
 			this._updateMarkers();
 		}
 
@@ -706,14 +733,8 @@
 				this._renderHeader();
 			}
 
-			// Reset countdown text + time markers
-			if (this.sessionResetMs && this.sessionUsageBase) {
-				this.sessionUsageSpan.textContent = `${this.sessionUsageBase}${formatResetLabel(this.sessionResetMs)}`;
-			}
-
-			if (this.weeklyResetMs && this.weeklyUsageBase) {
-				this.weeklyUsageSpan.textContent = `${this.weeklyUsageBase}${formatResetLabel(this.weeklyResetMs)}`;
-			}
+			// Detailed countdowns are only rendered while expanded.
+			if (!this.detailsPanel.classList.contains('ccbs-hidden') || this.sessionGroup.matches(':hover, :focus') || this.weeklyGroup.matches(':hover, :focus')) this._updateUsageDetails();
 
 			this._updateMarkers();
 		}

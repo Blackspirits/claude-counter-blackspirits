@@ -1,199 +1,133 @@
 (() => {
 	'use strict';
-
 	const CC_MARKER = 'ClaudeCounterBlackSpirits';
 	const CLAUDE_ORIGIN = 'https://claude.ai';
-
-	// Capture original fetch before anyone else can wrap it
+	if (window.__ccbsBridgeInstalled) return;
+	window.__ccbsBridgeInstalled = true;
 	const originalFetch = window.fetch;
-
-	// Wrap history methods early to detect SPA navigation (before frameworks cache them)
-	const originalPushState = history.pushState.bind(history);
-	const originalReplaceState = history.replaceState.bind(history);
-
-	history.pushState = function (...args) {
-		const result = originalPushState(...args);
-		window.dispatchEvent(new CustomEvent('ccbs:urlchange'));
-		return result;
-	};
-
-	history.replaceState = function (...args) {
-		const result = originalReplaceState(...args);
-		window.dispatchEvent(new CustomEvent('ccbs:urlchange'));
-		return result;
-	};
-
-	window.fetch = async (...args) => {
-		const url = toAbsoluteUrl(args[0]);
-		const method = getRequestMethod(args[0], args[1]);
-
-		// Detect generation start (completion requests)
-		if (url && method === 'POST' && (url.includes('/completion') || url.includes('/retry_completion'))) {
-			post('ccbs:generation_start', {});
-		}
-
-		const response = await originalFetch.apply(window, args);
-
-		const contentType = response.headers.get('content-type') || '';
-		if (contentType.includes('event-stream')) {
-			handleEventStream(response);
-		}
-
-		// Catch conversation tree fetches
-		if (url && url.includes('/chat_conversations/') && url.includes('tree=')) {
-			const meta = getConversationMeta(url);
-			if (meta) {
-				handleConversationResponse(meta, response);
-			}
-		}
-
-		return response;
-	};
-
-	function post(type, payload) {
-		window.postMessage({ ccbs: CC_MARKER, type, payload }, CLAUDE_ORIGIN);
+	let sequence = 0;
+	const post = (type, payload) => window.postMessage({ ccbs: CC_MARKER, type, payload }, CLAUDE_ORIGIN);
+	for (const name of ['pushState', 'replaceState']) {
+		const original = history[name];
+		history[name] = function (...args) {
+			const result = original.apply(this, args);
+			window.dispatchEvent(new CustomEvent('ccbs:urlchange'));
+			return result;
+		};
 	}
-
-	function postResponse(requestId, ok, payload, error) {
-		window.postMessage(
-			{
-				ccbs: CC_MARKER,
-				type: 'ccbs:response',
-				requestId,
-				ok,
-				payload,
-				error
-			},
-			CLAUDE_ORIGIN
-		);
+	function getMeta(url) {
+		if (url?.origin !== CLAUDE_ORIGIN) return null;
+		const match = url.pathname.match(/^\/api\/organizations\/([^/]+)\/chat_conversations\/([^/]+)(?:\/|$)/);
+		if (!match) return null;
+		try { return { orgId: decodeURIComponent(match[1]), conversationId: decodeURIComponent(match[2]) }; }
+		catch { return null; }
 	}
-
-	function getRequestMethod(input, options) {
-		const method = options?.method || (input instanceof Request ? input.method : '') || 'GET';
-		return String(method).toUpperCase();
-	}
-
-	function toAbsoluteUrl(input) {
+	async function readJson(response) {
+		const reader = response.body?.getReader();
+		if (!reader) throw new Error('Empty response');
+		const decoder = new TextDecoder();
+		let text = '', size = 0;
+		const timer = setTimeout(() => { reader.cancel().catch(() => {}); }, 18000);
 		try {
-			if (typeof input === 'string') return new URL(input, CLAUDE_ORIGIN).href;
-			if (input instanceof URL) return input.href;
-			if (input instanceof Request) return new URL(input.url, CLAUDE_ORIGIN).href;
-		} catch {
-			// Ignore malformed values from third-party wrappers.
-		}
-		return '';
-	}
-
-	function safeDecodeURIComponent(value) {
-		try {
-			return decodeURIComponent(value);
-		} catch {
-			return value;
-		}
-	}
-
-	function getConversationMeta(url) {
-		// /api/organizations/{orgId}/chat_conversations/{conversationId}
-		const match = url.match(/^https:\/\/claude\.ai\/api\/organizations\/([^/]+)\/chat_conversations\/([^/?]+)/);
-		return match
-			? { orgId: safeDecodeURIComponent(match[1]), conversationId: safeDecodeURIComponent(match[2]) }
-			: null;
-	}
-
-	async function handleConversationResponse({ orgId, conversationId }, response) {
-		try {
-			const cloned = response.clone();
-			const data = await cloned.json();
-			post('ccbs:conversation', { orgId, conversationId, data });
-		} catch {
-			// ignore parse failures
-		}
-	}
-
-	async function handleEventStream(response) {
-		try {
-			const cloned = response.clone();
-			const reader = cloned.body?.getReader?.();
-			if (!reader) return;
-
-			const decoder = new TextDecoder();
-			let buffer = '';
-
-			const processLine = (line) => {
-				if (!line.startsWith('data:')) return;
-				const raw = line.slice(5).trim();
-				if (!raw) return;
-				try {
-					const json = JSON.parse(raw);
-					if (json?.type === 'message_limit' && json.message_limit) {
-						post('ccbs:message_limit', json.message_limit);
-					}
-				} catch {
-					// Ignore partial/non-JSON SSE lines.
-				}
-			};
-
 			while (true) {
 				const { done, value } = await reader.read();
 				if (done) break;
-
-				buffer += decoder.decode(value, { stream: true });
-				const lines = buffer.split(/\r\n|\r|\n/);
-				buffer = lines.pop() || '';
-				for (const line of lines) processLine(line);
+				size += value.byteLength;
+				if (size > 8 * 1024 * 1024) throw new Error('Response too large');
+				text += decoder.decode(value, { stream: true });
 			}
-
+			return JSON.parse(text + decoder.decode());
+		} finally { clearTimeout(timer); reader.cancel().catch(() => {}); }
+	}
+	async function observeStream(response, meta, requestSequence) {
+		const reader = response.clone().body?.getReader();
+		if (!reader) return;
+		const decoder = new TextDecoder();
+		let buffer = '', data = [], size = 0, completed = false, stopped = false;
+		const timer = setTimeout(() => { stopped = true; reader.cancel().catch(() => {}); }, 10 * 60000);
+		function dispatch() {
+			try {
+				const json = JSON.parse(data.join('\n'));
+				if (json?.type === 'message_limit' && json.message_limit) post('ccbs:message_limit', { ...meta, sequence: requestSequence, messageLimit: json.message_limit });
+			} catch { /* Non-JSON events are not usage data. */ }
+			data = [];
+		}
+		function line(value) {
+			if (!value) dispatch();
+			else if (value.startsWith('data:')) data.push(value.slice(5).replace(/^ /, ''));
+		}
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) { completed = !stopped; break; }
+				size += value.byteLength;
+				if (size > 8 * 1024 * 1024) break;
+				buffer += decoder.decode(value, { stream: true });
+				if (buffer.length > 1024 * 1024) break;
+				// Retain a trailing CR until the next chunk to preserve CRLF boundaries.
+				let match;
+				while ((match = /\r\n|\n|\r(?!$)/.exec(buffer))) {
+					line(buffer.slice(0, match.index));
+					buffer = buffer.slice(match.index + match[0].length);
+				}
+			}
 			buffer += decoder.decode();
-			if (buffer) processLine(buffer);
-		} catch {
-			// Best-effort; never break claude.ai.
+			if (buffer) line(buffer.replace(/\r$/, ''));
+			dispatch();
+		} catch { /* Observation must never interfere with the original response. */ }
+		finally {
+			clearTimeout(timer);
+			reader.cancel().catch(() => {});
+			if (completed) post('ccbs:generation_end', { ...meta, sequence: requestSequence });
 		}
 	}
-
-	window.addEventListener('message', async (event) => {
-		if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
-		const data = event.data;
-		if (!data || data.ccbs !== CC_MARKER) return;
-		if (data.type !== 'ccbs:request') return;
-
-		const { requestId, kind, payload } = data;
+	window.fetch = async function (...args) {
+		let url, meta;
+		const requestSequence = ++sequence;
 		try {
-			if (kind === 'usage') {
-				const orgId = payload?.orgId;
-				if (!orgId) throw new Error('Missing orgId');
-				const safeOrgId = encodeURIComponent(orgId);
-				const res = await originalFetch(`https://claude.ai/api/organizations/${safeOrgId}/usage`, {
-					method: 'GET',
-					credentials: 'include'
-				});
-				if (!res.ok) throw new Error(`Usage request failed: HTTP ${res.status}`);
-				const json = await res.json();
-				postResponse(requestId, true, json, null);
-				return;
+			url = new URL(args[0] instanceof Request ? args[0].url : String(args[0]), location.href);
+			meta = getMeta(url);
+			const method = String(args[1]?.method || (args[0] instanceof Request ? args[0].method : 'GET')).toUpperCase();
+			if (meta && method === 'POST' && /\/(?:retry_)?completion$/.test(url.pathname)) post('ccbs:generation_start', meta);
+		} catch { /* Preserve native fetch errors. */ }
+		const response = await originalFetch.apply(this, args);
+		try {
+			const contentType = response.headers.get('content-type') || '';
+			if (meta && contentType.includes('text/event-stream')) observeStream(response, meta, requestSequence).catch(() => {});
+			if (meta && url.searchParams.has('tree') && response.ok) {
+				readJson(response.clone()).then(data => post('ccbs:conversation', { ...meta, sequence: requestSequence, data })).catch(() => {});
 			}
-
-			if (kind === 'conversation') {
-				const orgId = payload?.orgId;
-				const conversationId = payload?.conversationId;
-				if (!orgId || !conversationId) throw new Error('Missing orgId/conversationId');
-
-				const safeOrgId = encodeURIComponent(orgId);
-				const safeConversationId = encodeURIComponent(conversationId);
-				const url = `https://claude.ai/api/organizations/${safeOrgId}/chat_conversations/${safeConversationId}?tree=true&rendering_mode=messages&render_all_tools=true`;
-				const res = await originalFetch(url, {
-					method: 'GET',
-					credentials: 'include'
-				});
-				if (!res.ok) throw new Error(`Conversation request failed: HTTP ${res.status}`);
-				const json = await res.json();
-				post('ccbs:conversation', { orgId, conversationId, data: json });
-				postResponse(requestId, true, json, null);
-				return;
+			if (url?.origin === CLAUDE_ORIGIN && url.pathname.startsWith('/claudeai-rpc/') && contentType.includes('application/connect+')) post('ccbs:transport', { supported: false });
+		} catch { /* Only the page's original fetch may reject its request. */ }
+		return response;
+	};
+	function validId(value) { return typeof value === 'string' && value.length > 0 && value.length <= 256; }
+	window.addEventListener('message', async event => {
+		if (event.source !== window || event.origin !== CLAUDE_ORIGIN) return;
+		const message = event.data;
+		if (!message || message.ccbs !== CC_MARKER || message.type !== 'ccbs:request' || !validId(message.requestId)) return;
+		const { requestId, kind, payload } = message;
+		const reply = (ok, result, error) => window.postMessage({ ccbs: CC_MARKER, type: 'ccbs:response', requestId, ok, payload: result, error }, CLAUDE_ORIGIN);
+		let timer;
+		try {
+			if (kind === 'ping') { reply(true, { ready: true }); return; }
+			if (!['usage', 'conversation'].includes(kind) || !validId(payload?.orgId)) throw new Error('Invalid bridge request');
+			if (kind === 'conversation' && !validId(payload.conversationId)) throw new Error('Invalid conversation ID');
+			const base = `${CLAUDE_ORIGIN}/api/organizations/${encodeURIComponent(payload.orgId)}`;
+			const url = kind === 'usage' ? `${base}/usage` : `${base}/chat_conversations/${encodeURIComponent(payload.conversationId)}?tree=true&rendering_mode=messages&render_all_tools=true`;
+			const controller = new AbortController();
+			timer = setTimeout(() => controller.abort(), 18000);
+			const requestSequence = ++sequence;
+			const response = await originalFetch.call(window, url, { method: 'GET', credentials: 'include', signal: controller.signal });
+			if (!response.ok) {
+				const retry = response.headers.get('retry-after');
+				const retryAfterMs = retry && /^\d+$/.test(retry) ? Number(retry) * 1000 : Math.max(0, Date.parse(retry) - Date.now());
+				throw Object.assign(new Error(`HTTP ${response.status}`), { status: response.status, retryAfterMs });
 			}
-
-			throw new Error(`Unknown request kind: ${kind}`);
-		} catch (e) {
-			postResponse(requestId, false, null, e?.message || String(e));
-		}
+			const data = await readJson(response);
+			reply(true, kind === 'usage' ? data : { data, sequence: requestSequence });
+		} catch (error) {
+			reply(false, null, { message: error.message || 'Bridge request failed', status: error.status, retryAfterMs: error.retryAfterMs });
+		} finally { clearTimeout(timer); }
 	});
 })();

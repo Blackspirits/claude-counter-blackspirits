@@ -1,342 +1,158 @@
 (() => {
 	'use strict';
-
 	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 	if (CC.__started) return;
 	CC.__started = true;
 
-	function getConversationId() {
-		const match = window.location.pathname.match(/\/chat\/([^/?]+)/);
-		return match ? match[1] : null;
-	}
-
-	function getOrgIdFromCookie() {
+	const getConversationId = () => window.location.pathname.match(/\/chat\/([^/?]+)/)?.[1] || null;
+	function getOrg() {
 		try {
-			const raw = document.cookie
-				.split('; ')
-				.find((row) => row.startsWith('lastActiveOrg='))
-				?.split('=')[1] || null;
-			return raw ? decodeURIComponent(raw) : null;
-		} catch {
-			return null;
-		}
+			const row = document.cookie.split(';').map(value => value.trim()).find(value => value.startsWith('lastActiveOrg='));
+			return row ? decodeURIComponent(row.slice('lastActiveOrg='.length)) : null;
+		} catch { return null; }
 	}
-
-	/**
-	 * Wait for an element to appear in the DOM using MutationObserver.
-	 * More efficient than polling - reacts immediately when element appears.
-	 * @param {string} selector - CSS selector
-	 * @param {number} [timeoutMs] - Optional timeout in ms. Returns null if timeout expires.
-	 */
-	function waitForElement(selector, timeoutMs) {
-		return new Promise((resolve) => {
-			const existing = document.querySelector(selector);
-			if (existing) {
-				resolve(existing);
-				return;
-			}
-
-			let timeoutId;
-			const observer = new MutationObserver(() => {
-				const el = document.querySelector(selector);
-				if (el) {
-					if (timeoutId) clearTimeout(timeoutId);
-					observer.disconnect();
-					resolve(el);
-				}
-			});
-
-			observer.observe(document.body, { childList: true, subtree: true });
-
-			if (timeoutMs) {
-				timeoutId = setTimeout(() => {
-					observer.disconnect();
-					resolve(null);
-				}, timeoutMs);
-			}
+	CC.waitForElement = (selector, timeoutMs = 60000) => new Promise(resolve => {
+		const existing = document.querySelector(selector);
+		if (existing) return resolve(existing);
+		const observer = new MutationObserver(() => {
+			const element = document.querySelector(selector);
+			if (element) { clearTimeout(timer); observer.disconnect(); resolve(element); }
 		});
-	}
+		observer.observe(document.body, { childList: true, subtree: true });
+		const timer = setTimeout(() => { observer.disconnect(); resolve(null); }, timeoutMs);
+	});
 
-	CC.waitForElement = waitForElement;
-
-	function observeUrlChanges(callback) {
-		let lastPath = window.location.pathname;
-
-		const fireIfChanged = () => {
-			const current = window.location.pathname;
-			if (current !== lastPath) {
-				lastPath = current;
-				callback();
-			}
-		};
-
-		// Listen for custom event from bridge (history methods wrapped early)
-		window.addEventListener('ccbs:urlchange', fireIfChanged);
-		// Also popstate for back/forward buttons
-		window.addEventListener('popstate', fireIfChanged);
-
-		return () => {
-			window.removeEventListener('ccbs:urlchange', fireIfChanged);
-			window.removeEventListener('popstate', fireIfChanged);
-		};
-	}
-
-	function parseUsageFromUsageEndpoint(raw) {
-		if (!raw || typeof raw !== 'object') return null;
-
-		const normalizeWindow = (w, hours) => {
-			if (!w || typeof w !== 'object') return null;
-			if (typeof w.utilization !== 'number' || !Number.isFinite(w.utilization)) return null;
-			const utilization = Math.max(0, Math.min(100, w.utilization));
-			const resets_at = typeof w.resets_at === 'string' ? w.resets_at : null;
-			return { utilization, resets_at, window_hours: hours };
-		};
-
-		const fiveHour = normalizeWindow(raw.five_hour, 5);
-		const sevenDay = normalizeWindow(raw.seven_day, 24 * 7);
-
-		if (!fiveHour && !sevenDay) return null;
-		return { five_hour: fiveHour, seven_day: sevenDay };
-	}
-
-	function parseUsageFromMessageLimit(raw) {
-		if (!raw?.windows || typeof raw.windows !== 'object') return null;
-
-		const normalizeWindow = (w, hours) => {
-			if (!w || typeof w !== 'object') return null;
-			if (typeof w.utilization !== 'number' || !Number.isFinite(w.utilization)) return null;
-			const utilization = Math.max(0, Math.min(100, w.utilization * 100));
-			const resets_at = typeof w.resets_at === 'number' && Number.isFinite(w.resets_at)
-				? new Date(w.resets_at * 1000).toISOString()
-				: null;
-			return { utilization, resets_at, window_hours: hours };
-		};
-
-		const fiveHour = normalizeWindow(raw.windows['5h'], 5);
-		const sevenDay = normalizeWindow(raw.windows['7d'], 24 * 7);
-
-		if (!fiveHour && !sevenDay) return null;
-		return { five_hour: fiveHour, seven_day: sevenDay };
-	}
-
-	let currentConversationId = null;
-	let currentOrgId = null;
-
-	let usageState = null; // last snapshot
-	let usageResetMs = { five_hour: null, seven_day: null }; // cached parsed timestamps
-	let lastUsageSseMs = 0;
-	let usageFetchInFlight = false;
-	let lastUsageUpdateMs = 0;
-	const rolloverHandledForResetMs = { five_hour: null, seven_day: null };
-
-	const ui = new CC.ui.CounterUI({
-		onUsageRefresh: async () => {
-			await refreshUsage();
+	let conversationId = null, orgId = null, conversationRevision = 0, contextEpoch = 0, lastSequence = -1;
+	let conversationInFlight = null, conversationAttemptAt = -Infinity;
+	let renderedUsage = '';
+	let conversationRefreshTimer = null;
+	const ui = new CC.ui.CounterUI({ onUsageRefresh: async () => {
+		syncContext();
+		await Promise.allSettled([usage.refresh(true), refreshConversation()]);
+	} });
+	ui.initialize();
+	const usage = new CC.usage.UsageStore({
+		getOrg,
+		request: async org => { await CC.bridge.ready(); return CC.bridge.requestUsage(org); },
+		render: (state, status) => {
+			const signature = JSON.stringify([state, status]);
+			if (signature === renderedUsage) return;
+			renderedUsage = signature;
+			ui.setUsage(state);
+			ui.setUsageStatus(status);
 		}
 	});
-	ui.initialize();
 
-	// Bridge must be ready before we can make requests
-	const bridgeReady = CC.injectBridgeOnce();
-
-	function applyUsageUpdate(normalized, source) {
-		if (!normalized) return;
-		const now = Date.now();
-		usageState = normalized;
-		lastUsageUpdateMs = now;
-		if (source === 'sse') lastUsageSseMs = now;
-		// Cache parsed timestamps to avoid Date.parse() every tick
-		usageResetMs.five_hour = normalized.five_hour?.resets_at ? Date.parse(normalized.five_hour.resets_at) : null;
-		usageResetMs.seven_day = normalized.seven_day?.resets_at ? Date.parse(normalized.seven_day.resets_at) : null;
-		ui.setUsage(normalized);
+	function syncContext() {
+		const nextOrg = getOrg(), nextConversation = getConversationId();
+		if (orgId === nextOrg && conversationId === nextConversation) return false;
+		orgId = nextOrg;
+		conversationId = nextConversation;
+		contextEpoch++;
+		conversationRevision++;
+		lastSequence = -1;
+		conversationAttemptAt = -Infinity;
+		conversationInFlight = null;
+		clearTimeout(conversationRefreshTimer);
+		conversationRefreshTimer = null;
+		ui.setConversationMetrics();
+		usage.syncOrg();
+		return true;
 	}
 
-	function updateOrgIdIfNeeded(newOrgId) {
-		if (newOrgId && typeof newOrgId === 'string' && newOrgId !== currentOrgId) {
-			currentOrgId = newOrgId;
-		}
-	}
-
-	async function refreshUsage() {
-		await bridgeReady;
-		const orgId = currentOrgId || getOrgIdFromCookie();
-		if (!orgId) return;
-		updateOrgIdIfNeeded(orgId);
-
-		if (usageFetchInFlight) return;
-		usageFetchInFlight = true;
-		let raw;
+	async function handleConversation(payload = {}) {
+		syncContext();
+		if (!orgId || payload.orgId !== orgId || !conversationId || payload.conversationId !== conversationId || !payload.data) return;
+		if (!Number.isFinite(payload.sequence) || payload.sequence < lastSequence) return;
+		lastSequence = payload.sequence;
+		const revision = ++conversationRevision;
 		try {
-			raw = await CC.bridge.requestUsage(orgId);
+			const metrics = await CC.tokens.computeConversationMetrics(payload.data, () => revision !== conversationRevision);
+			syncContext();
+			if (revision !== conversationRevision) return;
+			ui.setConversationMetrics(metrics);
 		} catch {
-			return;
-		} finally {
-			usageFetchInFlight = false;
+			if (revision === conversationRevision) ui.setConversationMetrics({ unavailable: true });
 		}
-
-		// Avoid applying stale org-level usage if the user switched workspace/org
-		// while the request was in flight.
-		const activeOrgId = getOrgIdFromCookie() || currentOrgId;
-		if (activeOrgId && activeOrgId !== orgId) return;
-
-		const parsed = parseUsageFromUsageEndpoint(raw);
-		applyUsageUpdate(parsed, 'usage');
 	}
 
 	async function refreshConversation() {
-		await bridgeReady;
-		if (!currentConversationId) {
-			ui.setConversationMetrics();
-			return;
-		}
-
-		const orgId = currentOrgId || getOrgIdFromCookie();
-		if (!orgId) return;
-		updateOrgIdIfNeeded(orgId);
-
+		syncContext();
+		if (!orgId || !conversationId || conversationInFlight || Date.now() - conversationAttemptAt < 10000) return;
+		const requestOrg = orgId, requestConversation = conversationId, ticket = {}, revision = conversationRevision;
+		conversationInFlight = ticket;
+		conversationAttemptAt = Date.now();
 		try {
-			await CC.bridge.requestConversation(orgId, currentConversationId);
+			await CC.bridge.ready();
+			const result = await CC.bridge.requestConversation(requestOrg, requestConversation);
+			await handleConversation({ ...result, orgId: requestOrg, conversationId: requestConversation });
 		} catch {
-			// ignore
+			syncContext();
+			if (revision === conversationRevision && requestOrg === orgId && requestConversation === conversationId) ui.setConversationMetrics({ unavailable: true });
+		} finally {
+			if (conversationInFlight === ticket) conversationInFlight = null;
 		}
 	}
 
-	function handleGenerationStart() {
-		if (!currentConversationId) return;
-		ui.setPendingCache(true);
+	function scheduleConversationRefresh() {
+		clearTimeout(conversationRefreshTimer);
+		const epoch = contextEpoch;
+		conversationRefreshTimer = setTimeout(() => {
+			syncContext();
+			if (epoch !== contextEpoch) return;
+			if (conversationInFlight) { scheduleConversationRefresh(); return; }
+			refreshConversation();
+		}, Math.max(1000, 10000 - (Date.now() - conversationAttemptAt)));
 	}
 
-	async function handleConversationPayload({ orgId, conversationId, data }) {
-		if (!conversationId || conversationId !== currentConversationId) return;
-		updateOrgIdIfNeeded(orgId);
-		if (!data) return;
+	CC.bridge.on('ccbs:conversation', handleConversation);
+	CC.bridge.on('ccbs:message_limit', payload => usage.acceptEvent(payload));
+	CC.bridge.on('ccbs:transport', () => ui.setTransportNotice(true));
+	CC.bridge.on('ccbs:generation_end', payload => {
+		syncContext();
+		if (payload?.orgId === orgId && payload?.conversationId === conversationId) scheduleConversationRefresh();
+	});
 
-		const metrics = await CC.tokens.computeConversationMetrics(data);
-		if (conversationId !== currentConversationId) return;
-		ui.setConversationMetrics({ totalTokens: metrics.totalTokens, cachedUntil: metrics.cachedUntil });
+	function attach() {
+		ui.attachHeader();
+		ui.attachUsageLine();
 	}
-
-	function handleMessageLimit(messageLimit) {
-		const parsed = parseUsageFromMessageLimit(messageLimit);
-		applyUsageUpdate(parsed, 'sse');
+	function navigate() {
+		if (syncContext()) refreshConversation();
+		attach();
+		usage.tick();
 	}
-
-	CC.bridge.on('ccbs:generation_start', handleGenerationStart);
-	CC.bridge.on('ccbs:conversation', handleConversationPayload);
-	CC.bridge.on('ccbs:message_limit', handleMessageLimit);
-
-	async function handleUrlChange() {
-		currentConversationId = getConversationId();
-
-		// Attach usage line and header independently - they have different anchor elements
-		// and CHAT_MENU_TRIGGER doesn't exist on home/new pages
-		waitForElement(CC.DOM.MODEL_SELECTOR_DROPDOWN, 60000).then((el) => {
-			if (el) ui.attachUsageLine();
-		});
-		waitForElement(CC.DOM.CHAT_MENU_TRIGGER, 60000).then((el) => {
-			if (el) ui.attachHeader();
-		});
-
-		if (!currentConversationId) {
-			ui.setConversationMetrics();
-			return;
-		}
-
-		// Best-effort orgId from cookie.
-		updateOrgIdIfNeeded(getOrgIdFromCookie());
-
-		await refreshConversation();
-
-		// Usage is org-level, not conversation-level. Only fetch on first load or if stale.
-		if (!usageState) await refreshUsage();
-	}
-
-	const unobserveUrl = observeUrlChanges(handleUrlChange);
-	window.addEventListener('beforeunload', unobserveUrl);
-
-	// Refresh on branch navigation - watch for the branch indicator to change
-	let branchObserver = null;
-	document.addEventListener('click', (e) => {
-		if (!currentConversationId) return;
-		const btn = e.target.closest('button[aria-label="Previous"], button[aria-label="Next"]');
-		if (!btn) return;
-
-		// Find the branch indicator span (matches "X / Y" pattern) near the clicked button
-		const container = btn.closest('.inline-flex');
-		const spans = container?.querySelectorAll('span') || [];
-		const indicator = Array.from(spans).find((s) => /^\d+\s*\/\s*\d+$/.test(s.textContent.trim()));
-		if (!indicator) return;
-
-		const originalText = indicator.textContent;
-
-		// Clean up any existing observer
-		if (branchObserver) branchObserver.disconnect();
-
-		// Watch for the indicator text to change (with cleanup timeout)
+	window.addEventListener('ccbs:urlchange', navigate);
+	window.addEventListener('popstate', navigate);
+	let branchObserver = null, branchTimer = null;
+	document.addEventListener('click', event => {
+		const button = event.target.closest?.('button');
+		const indicator = Array.from(button?.closest('.inline-flex')?.querySelectorAll('span') || [])
+			.find(span => /^\d+\s*\/\s*\d+$/.test(span.textContent.trim()));
+		if (!indicator || !conversationId) return;
+		branchObserver?.disconnect();
+		clearTimeout(branchTimer);
+		const original = indicator.textContent;
 		branchObserver = new MutationObserver(() => {
-			if (indicator.textContent !== originalText) {
-				branchObserver.disconnect();
-				branchObserver = null;
-				refreshConversation();
-			}
+			if (indicator.textContent === original) return;
+			branchObserver.disconnect();
+			clearTimeout(branchTimer);
+			// Invalidate calculations for the previous branch; its fetch can still finish.
+			conversationRevision++;
+			ui.setConversationMetrics();
+			scheduleConversationRefresh();
 		});
-
 		branchObserver.observe(indicator, { childList: true, characterData: true, subtree: true });
-
-		// Clean up if nothing changes after 60 seconds
-		setTimeout(() => {
-			if (branchObserver) {
-				branchObserver.disconnect();
-				branchObserver = null;
-			}
-		}, 60000);
+		branchTimer = setTimeout(() => branchObserver?.disconnect(), 60000);
 	});
-
-	// Initial attach + fetches
-	handleUrlChange();
-
-	function tick() {
-		if (document.hidden) return;
-		ui.tick();
-
-		// Refresh usage when a window ends (5h / 7d). SSE won't fire at rollover unless a message is sent.
-		const now = Date.now();
-
-		if (usageResetMs.five_hour && now >= usageResetMs.five_hour && rolloverHandledForResetMs.five_hour !== usageResetMs.five_hour) {
-			rolloverHandledForResetMs.five_hour = usageResetMs.five_hour;
-			refreshUsage();
-		}
-		if (usageResetMs.seven_day && now >= usageResetMs.seven_day && rolloverHandledForResetMs.seven_day !== usageResetMs.seven_day) {
-			rolloverHandledForResetMs.seven_day = usageResetMs.seven_day;
-			refreshUsage();
-		}
-
-		// Optional hourly safety refresh.
-		const ONE_HOUR_MS = 60 * 60 * 1000;
-		const sseAge = now - lastUsageSseMs;
-		const anyAge = now - lastUsageUpdateMs;
-		if (sseAge > ONE_HOUR_MS && anyAge > ONE_HOUR_MS) {
-			refreshUsage();
-		}
-	}
-
-	// When a background tab becomes visible again, catch up immediately.
-	let hiddenSinceMs = null;
 	document.addEventListener('visibilitychange', () => {
-		if (document.hidden) {
-			hiddenSinceMs = Date.now();
-			return;
-		}
-
-		ui.tick();
-		const STALE_THRESHOLD_MS = 5 * 60 * 1000;
-		if (hiddenSinceMs !== null && Date.now() - hiddenSinceMs > STALE_THRESHOLD_MS) {
-			refreshUsage();
-			if (currentConversationId) refreshConversation();
-		}
-		hiddenSinceMs = null;
+		if (!document.hidden) { navigate(); refreshConversation(); }
 	});
-
-	// Keep countdowns + markers updated.
-	setInterval(tick, 1000);
+	navigate();
+	setInterval(() => {
+		if (document.hidden) return;
+		if (syncContext()) refreshConversation();
+		ui.tick();
+		usage.tick();
+	}, 1000);
 })();

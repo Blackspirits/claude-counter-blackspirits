@@ -4,10 +4,6 @@
 	const CC = (globalThis.ClaudeCounterBlackSpirits = globalThis.ClaudeCounterBlackSpirits || {});
 	const CLAUDE_ORIGIN = 'https://claude.ai';
 
-	function getRuntime() {
-		return globalThis.browser?.runtime || globalThis.chrome?.runtime || null;
-	}
-
 	function makeRequestId() {
 		return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 	}
@@ -29,7 +25,7 @@
 					this._pending.delete(requestId);
 					clearTimeout(pending.timeoutId);
 					if (ok) pending.resolve(payload);
-					else pending.reject(new Error(error || 'Bridge request failed'));
+					else pending.reject(Object.assign(new Error(error?.message || 'Bridge request failed'), { status: error?.status, retryAfterMs: error?.retryAfterMs }));
 					return;
 				}
 
@@ -42,7 +38,7 @@
 			const listeners = this._listeners.get(type);
 			if (!listeners) return;
 			for (const fn of listeners) {
-				fn(payload);
+				try { Promise.resolve(fn(payload)).catch(() => {}); } catch { /* Isolate listeners. */ }
 			}
 		}
 
@@ -75,7 +71,7 @@
 		}
 
 		async requestUsage(orgId) {
-			return this.request('usage', { orgId }, { timeoutMs: 15000 });
+			return this.request('usage', { orgId }, { timeoutMs: 20000 });
 		}
 
 		async requestConversation(orgId, conversationId) {
@@ -83,30 +79,13 @@
 		}
 	}
 
-	let bridgeReadyPromise = null;
-
-	function injectBridgeOnce() {
-		if (bridgeReadyPromise) return bridgeReadyPromise;
-
-		const runtime = getRuntime();
-		if (!runtime) return Promise.resolve(false);
-
-		if (document.getElementById(CC.DOM.BRIDGE_SCRIPT_ID)) {
-			return Promise.resolve(true);
-		}
-
-		bridgeReadyPromise = new Promise((resolve) => {
-			const script = document.createElement('script');
-			script.id = CC.DOM.BRIDGE_SCRIPT_ID;
-			script.src = runtime.getURL('src/injected/bridge.js');
-			script.onload = () => resolve(true);
-			script.onerror = () => resolve(false);
-			(document.head || document.documentElement).appendChild(script);
-		});
-
-		return bridgeReadyPromise;
-	}
-
 	CC.bridge = new BridgeClient();
-	CC.injectBridgeOnce = injectBridgeOnce;
+	let readyPromise;
+	CC.bridge.ready = () => {
+		if (!readyPromise) readyPromise = CC.bridge.request('ping', {}, { timeoutMs: 3000 }).catch(error => {
+			readyPromise = null;
+			throw error;
+		});
+		return readyPromise;
+	};
 })();

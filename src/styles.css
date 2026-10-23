@@ -1,4 +1,4 @@
-/* Header: tokens + cache timer */
+/* Header: visible-text token estimate */
 .ccbs-header {
 	margin-top: 2px;
 	user-select: none;
@@ -11,8 +11,8 @@
 /* Usage row: session + weekly */
 .ccbs-usageRow {
 	position: relative;
-	z-index: 50;
-	cursor: pointer;
+	z-index: 1;
+	cursor: default;
 	user-select: none;
 	transition: opacity 150ms ease;
 }
@@ -184,4 +184,45 @@
 	outline: 1px solid var(--ccbs-stroke, currentColor);
 	outline-offset: 2px;
 	border-radius: 6px;
+}
+
+/* Compact summary; full reset and status information is expandable. */
+.ccbs-usageRow {
+ display: flex;
+ flex-direction: column;
+ align-items: stretch;
+ gap: 0;
+ flex: 0 0 auto;
+ width: 100%;
+ min-width: 0;
+ box-sizing: border-box;
+ padding: 2px 8px;
+ font-family: inherit;
+ font-size: 11px;
+ line-height: 1.4;
+ cursor: default;
+ container-type: inline-size;
+}
+.ccbs-usageSummary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-width: 0; }
+.ccbs-usageGroup { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; width: auto; min-width: 0; }
+.ccbs-usageText { white-space: nowrap; }
+.ccbs-headerItem { white-space: normal; overflow-wrap: anywhere; }
+.ccbs-bar--usage { flex: 0 0 48px; width: 48px; min-width: 0; height: 6px; }
+.ccbs-controls { display: flex; align-items: center; flex: 0 0 auto; gap: 6px; margin-inline-start: auto; }
+.ccbs-details { display: flex; flex-direction: column; gap: 4px; padding: 6px 0 2px; overflow-wrap: anywhere; }
+.ccbs-status, .ccbs-transportNotice { font-size: 11px; }
+.ccbs-refresh, .ccbs-detailsToggle { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 22px; height: 22px; box-sizing: border-box; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 6px; padding: 0; cursor: pointer; font: inherit; font-size: 15px; }
+.ccbs-langChip { height: 22px; box-sizing: border-box; }
+.ccbs-refresh:disabled { opacity: .5; cursor: wait; }
+.ccbs-detailsToggle.ccbs-needsAttention { color: #c77f00; font-weight: 700; }
+.ccbs-refresh:focus-visible, .ccbs-detailsToggle:focus-visible, .ccbs-tooltipTrigger:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.ccbs-usageRow[data-status="stale"] .ccbs-usageGroup,
+.ccbs-usageRow[data-status="unavailable"] .ccbs-usageGroup,
+.ccbs-usageRow[data-status="signedOut"] .ccbs-usageGroup { opacity: .55; }
+.ccbs-tooltip { max-width: min(360px, calc(100vw - 20px)); color: CanvasText; background: Canvas; border: 1px solid currentColor; }
+@container (max-width: 420px) {
+ .ccbs-usageSummary { column-gap: 8px; }
+ .ccbs-usageGroup { gap: 4px; }
+ .ccbs-bar--usage { flex-basis: 32px; width: 32px; }
+ .ccbs-controls { gap: 4px; }
 }

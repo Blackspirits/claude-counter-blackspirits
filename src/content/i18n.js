@@ -15,15 +15,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "d",
-		"cachedFor": "em cache por",
 		"resetLabel": " · repõe às {time} (daqui a {countdown})",
 		"sessionUsage": "Sessão: {pct}%",
 		"weeklyUsage": "Semanal: {pct}%",
-		"tooltipTokens": "Tokens aproximados (exclui o prompt de sistema).\nUtiliza um tokenizer genérico; pode diferir da contagem do Claude.\nFica inválido após compactação de contexto.\nEscala da barra: 200k tokens (limite máximo de contexto do Claude; pode compactar antes disso).",
-		"tooltipTokensCompacted": "Tokens aproximados (exclui o prompt de sistema).\nUtiliza um tokenizer genérico; pode diferir da contagem do Claude.\nEsta contagem fica inválida após compactação.",
-		"tooltipCache": "As mensagens enviadas enquanto estão em cache são significativamente mais baratas.",
+		"tooltipTokens": "Estimativa de tokens no texto visível, calculada com um tokenizador genérico. Exclui instruções ocultas e conteúdo não textual. Não mede o contexto restante nem deteta a compactação.",
 		"tooltipSession": "Janela de sessão de 5 horas.\nA barra mostra a tua utilização.\nA linha marca onde estás dentro da janela.",
-		"tooltipWeekly": "Janela de utilização de 7 dias.\nA barra mostra a tua utilização.\nA linha marca onde estás dentro da janela."
+		"tooltipWeekly": "Janela de utilização de 7 dias.\nA barra mostra a tua utilização.\nA linha marca onde estás dentro da janela.",
+		"statusLoading": "A atualizar…",
+		"statusUpdated": "Atualizado às {time}",
+		"statusStale": "Desatualizado · {time}",
+		"statusSignedOut": "Inicia sessão ou verifica o acesso",
+		"statusUnavailable": "Indisponível · nova tentativa agendada",
+		"statusUnsupported": "Formato de utilização indisponível",
+		"transportNotice": "Atualizações em direto limitadas; podes atualizar manualmente",
+		"tokensUnavailable": "Estimativa de tokens indisponível",
+		"showDetails": "Mostrar detalhes",
+		"hideDetails": "Ocultar detalhes"
 	},
 	"en": {
 		"languageName": "English",
@@ -35,15 +42,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "d",
-		"cachedFor": "cached for",
 		"resetLabel": " · resets at {time} (in {countdown})",
 		"sessionUsage": "Session: {pct}%",
 		"weeklyUsage": "Weekly: {pct}%",
-		"tooltipTokens": "Approximate tokens (excludes system prompt).\nUses a generic tokenizer; may differ from Claude's count.\nBecomes invalid after context compaction.\nBar scale: 200k tokens (Claude's maximum context length; may compact before then).",
-		"tooltipTokensCompacted": "Approximate tokens (excludes system prompt).\nUses a generic tokenizer; may differ from Claude's count.\nThis count is invalid after compaction.",
-		"tooltipCache": "Messages sent while cached are significantly cheaper.",
+		"tooltipTokens": "Approximate tokens in visible text, using a generic tokenizer. Excludes hidden prompts and non-text media. Does not measure remaining context or detect compaction.",
 		"tooltipSession": "5-hour session window.\nThe bar shows your usage.\nThe line marks where you are in the window.",
-		"tooltipWeekly": "7-day usage window.\nThe bar shows your usage.\nThe line marks where you are in the window."
+		"tooltipWeekly": "7-day usage window.\nThe bar shows your usage.\nThe line marks where you are in the window.",
+		"statusLoading": "Updating…",
+		"statusUpdated": "Updated {time}",
+		"statusStale": "Out of date · {time}",
+		"statusSignedOut": "Sign in or check access",
+		"statusUnavailable": "Unavailable · retry scheduled",
+		"statusUnsupported": "Usage format unavailable",
+		"transportNotice": "Limited live updates; refresh available",
+		"tokensUnavailable": "Token estimate unavailable",
+		"showDetails": "Show details",
+		"hideDetails": "Hide details"
 	},
 	"fr": {
 		"languageName": "Français",
@@ -55,15 +69,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "j",
-		"cachedFor": "en cache pendant",
 		"resetLabel": " · réinitialisation à {time} (dans {countdown})",
 		"sessionUsage": "Session : {pct} %",
 		"weeklyUsage": "Hebdo : {pct} %",
-		"tooltipTokens": "Tokens approximatifs (n'inclut pas le prompt système).\nUtilise un tokenizer générique ; peut différer du compteur de Claude.\nDevient invalide après compactage du contexte.\nÉchelle de la barre : 200k tokens (limite maximale de contexte de Claude ; le compactage peut arriver avant).",
-		"tooltipTokensCompacted": "Tokens approximatifs (n'inclut pas le prompt système).\nUtilise un tokenizer générique ; peut différer du compteur de Claude.\nCe compteur est invalide après compactage.",
-		"tooltipCache": "Les messages envoyés pendant que le cache est actif coûtent beaucoup moins cher.",
+		"tooltipTokens": "Estimation des tokens du texte visible avec un tokenizer générique. Exclut les instructions masquées et les médias non textuels. Ne mesure pas le contexte restant et ne détecte pas la compression.",
 		"tooltipSession": "Fenêtre de session de 5 heures.\nLa barre indique ton utilisation.\nLa ligne marque ta position dans la fenêtre.",
-		"tooltipWeekly": "Fenêtre d'utilisation de 7 jours.\nLa barre indique ton utilisation.\nLa ligne marque ta position dans la fenêtre."
+		"tooltipWeekly": "Fenêtre d'utilisation de 7 jours.\nLa barre indique ton utilisation.\nLa ligne marque ta position dans la fenêtre.",
+		"statusLoading": "Mise à jour…",
+		"statusUpdated": "Mis à jour à {time}",
+		"statusStale": "Données anciennes · {time}",
+		"statusSignedOut": "Connectez-vous ou vérifiez l’accès",
+		"statusUnavailable": "Indisponible · nouvelle tentative prévue",
+		"statusUnsupported": "Format d’utilisation indisponible",
+		"transportNotice": "Mises à jour en direct limitées ; actualisation disponible",
+		"tokensUnavailable": "Estimation des tokens indisponible",
+		"showDetails": "Afficher les détails",
+		"hideDetails": "Masquer les détails"
 	},
 	"es": {
 		"languageName": "Español",
@@ -75,15 +96,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "d",
-		"cachedFor": "en caché durante",
 		"resetLabel": " · se reinicia a las {time} (en {countdown})",
 		"sessionUsage": "Sesión: {pct}%",
 		"weeklyUsage": "Semanal: {pct}%",
-		"tooltipTokens": "Tokens aproximados (excluye el prompt del sistema).\nUtiliza un tokenizador genérico; puede diferir del recuento de Claude.\nDeja de ser válido tras la compactación del contexto.\nEscala de la barra: 200k tokens (límite máximo de contexto de Claude; puede compactarse antes).",
-		"tooltipTokensCompacted": "Tokens aproximados (excluye el prompt del sistema).\nUtiliza un tokenizador genérico; puede diferir del recuento de Claude.\nEste recuento no es válido tras la compactación.",
-		"tooltipCache": "Los mensajes enviados mientras la caché está activa son mucho más baratos.",
+		"tooltipTokens": "Estimación de tokens del texto visible con un tokenizador genérico. Excluye instrucciones ocultas y contenido no textual. No mide el contexto restante ni detecta la compactación.",
 		"tooltipSession": "Ventana de sesión de 5 horas.\nLa barra muestra tu uso.\nLa línea marca dónde estás dentro de la ventana.",
-		"tooltipWeekly": "Ventana de uso de 7 días.\nLa barra muestra tu uso.\nLa línea marca dónde estás dentro de la ventana."
+		"tooltipWeekly": "Ventana de uso de 7 días.\nLa barra muestra tu uso.\nLa línea marca dónde estás dentro de la ventana.",
+		"statusLoading": "Actualizando…",
+		"statusUpdated": "Actualizado a las {time}",
+		"statusStale": "Datos desactualizados · {time}",
+		"statusSignedOut": "Inicia sesión o comprueba el acceso",
+		"statusUnavailable": "No disponible · reintento programado",
+		"statusUnsupported": "Formato de uso no disponible",
+		"transportNotice": "Actualizaciones en directo limitadas; puedes actualizar manualmente",
+		"tokensUnavailable": "Estimación de tokens no disponible",
+		"showDetails": "Mostrar detalles",
+		"hideDetails": "Ocultar detalles"
 	},
 	"de": {
 		"languageName": "Deutsch",
@@ -95,15 +123,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "T",
-		"cachedFor": "im Cache für",
 		"resetLabel": " · wird um {time} zurückgesetzt (in {countdown})",
 		"sessionUsage": "Sitzung: {pct}%",
 		"weeklyUsage": "Wöchentlich: {pct}%",
-		"tooltipTokens": "Ungefähre Tokens (ohne System-Prompt).\nVerwendet einen generischen Tokenizer; kann von Claudes Zählung abweichen.\nWird nach Kontextkompaktierung ungültig.\nBalkenskala: 200k Tokens (maximale Kontextlänge von Claude; Kompaktierung kann früher erfolgen).",
-		"tooltipTokensCompacted": "Ungefähre Tokens (ohne System-Prompt).\nVerwendet einen generischen Tokenizer; kann von Claudes Zählung abweichen.\nDiese Zählung ist nach Kompaktierung ungültig.",
-		"tooltipCache": "Nachrichten, die gesendet werden, während der Cache aktiv ist, sind deutlich günstiger.",
+		"tooltipTokens": "Geschätzte Tokens im sichtbaren Text mit einem generischen Tokenizer. Verborgene Anweisungen und nicht textuelle Medien sind ausgeschlossen. Misst nicht den verbleibenden Kontext und erkennt keine Komprimierung.",
 		"tooltipSession": "5-Stunden-Sitzungsfenster.\nDer Balken zeigt deine Nutzung.\nDie Linie markiert deine Position im Fenster.",
-		"tooltipWeekly": "7-Tage-Nutzungsfenster.\nDer Balken zeigt deine Nutzung.\nDie Linie markiert deine Position im Fenster."
+		"tooltipWeekly": "7-Tage-Nutzungsfenster.\nDer Balken zeigt deine Nutzung.\nDie Linie markiert deine Position im Fenster.",
+		"statusLoading": "Wird aktualisiert…",
+		"statusUpdated": "Aktualisiert um {time}",
+		"statusStale": "Veraltete Daten · {time}",
+		"statusSignedOut": "Anmelden oder Zugriff prüfen",
+		"statusUnavailable": "Nicht verfügbar · erneuter Versuch geplant",
+		"statusUnsupported": "Nutzungsformat nicht verfügbar",
+		"transportNotice": "Live-Aktualisierung eingeschränkt; manuelle Aktualisierung verfügbar",
+		"tokensUnavailable": "Token-Schätzung nicht verfügbar",
+		"showDetails": "Details anzeigen",
+		"hideDetails": "Details ausblenden"
 	},
 	"it": {
 		"languageName": "Italiano",
@@ -115,15 +150,22 @@
 		"unitMinuteShort": "min",
 		"unitHourShort": "h",
 		"unitDayShort": "g",
-		"cachedFor": "in cache per",
 		"resetLabel": " · si azzera alle {time} (tra {countdown})",
 		"sessionUsage": "Sessione: {pct}%",
 		"weeklyUsage": "Settimanale: {pct}%",
-		"tooltipTokens": "Token approssimativi (esclude il prompt di sistema).\nUsa un tokenizer generico; può differire dal conteggio di Claude.\nDiventa non valido dopo la compattazione del contesto.\nScala della barra: 200k token (limite massimo del contesto di Claude; può compattare prima).",
-		"tooltipTokensCompacted": "Token approssimativi (esclude il prompt di sistema).\nUsa un tokenizer generico; può differire dal conteggio di Claude.\nQuesto conteggio non è valido dopo la compattazione.",
-		"tooltipCache": "I messaggi inviati mentre la cache è attiva costano molto meno.",
+		"tooltipTokens": "Stima dei token nel testo visibile con un tokenizer generico. Esclude istruzioni nascoste e contenuti non testuali. Non misura il contesto rimanente e non rileva la compattazione.",
 		"tooltipSession": "Finestra di sessione di 5 ore.\nLa barra mostra il tuo utilizzo.\nLa linea indica dove ti trovi nella finestra.",
-		"tooltipWeekly": "Finestra di utilizzo di 7 giorni.\nLa barra mostra il tuo utilizzo.\nLa linea indica dove ti trovi nella finestra."
+		"tooltipWeekly": "Finestra di utilizzo di 7 giorni.\nLa barra mostra il tuo utilizzo.\nLa linea indica dove ti trovi nella finestra.",
+		"statusLoading": "Aggiornamento…",
+		"statusUpdated": "Aggiornato alle {time}",
+		"statusStale": "Dati non aggiornati · {time}",
+		"statusSignedOut": "Accedi o verifica l’accesso",
+		"statusUnavailable": "Non disponibile · nuovo tentativo programmato",
+		"statusUnsupported": "Formato di utilizzo non disponibile",
+		"transportNotice": "Aggiornamenti in tempo reale limitati; aggiornamento manuale disponibile",
+		"tokensUnavailable": "Stima dei token non disponibile",
+		"showDetails": "Mostra dettagli",
+		"hideDetails": "Nascondi dettagli"
 	}
 });
 
@@ -138,17 +180,20 @@
 		return 'en';
 	}
 
+	let memoryLanguage;
 	function getStoredLanguage() {
+		if (memoryLanguage !== undefined) return memoryLanguage;
 		try {
 			const value = localStorage.getItem(STORAGE_KEY);
-			return value && (value === 'auto' || STRINGS[value]) ? value : 'auto';
+			return value && (value === 'auto' || Object.hasOwn(STRINGS, value)) ? value : 'auto';
 		} catch {
 			return 'auto';
 		}
 	}
 
 	function setStoredLanguage(value) {
-		const safeValue = value && (value === 'auto' || STRINGS[value]) ? value : 'auto';
+		const safeValue = value && (value === 'auto' || Object.hasOwn(STRINGS, value)) ? value : 'auto';
+		memoryLanguage = safeValue;
 		try {
 			if (safeValue === 'auto') localStorage.removeItem(STORAGE_KEY);
 			else localStorage.setItem(STORAGE_KEY, safeValue);

@@ -49,10 +49,14 @@ if (manifest) {
   assert(!manifest.browser_specific_settings, 'manifest.json: browser_specific_settings should be omitted until Firefox is tested');
 
   const matches = manifest.content_scripts?.flatMap((script) => script.matches || []) || [];
-  assert(matches.length === 1 && matches[0] === 'https://claude.ai/*', 'manifest.json: content script should only match https://claude.ai/*');
+  assert(matches.length === 2 && matches.every(match => match === 'https://claude.ai/*'), 'manifest.json: content script should only match https://claude.ai/*');
 
+  const pageScript = manifest.content_scripts.find(script => script.world === 'MAIN');
+  assert(pageScript?.run_at === 'document_start' && pageScript.js?.length === 1 && pageScript.js[0] === 'src/injected/bridge.js', 'manifest.json: bridge must start early in MAIN');
+  const isolated = manifest.content_scripts.find(script => script.world !== 'MAIN');
+  assert(isolated?.js?.includes('src/content/usage.js'), 'manifest.json: usage module must load in isolation');
   const resources = manifest.web_accessible_resources?.flatMap((entry) => entry.resources || []) || [];
-  assert(resources.length === 1 && resources.includes('src/injected/bridge.js'), 'manifest.json: only bridge.js should be web-accessible');
+  assert(resources.length === 0, 'manifest.json: no web-accessible resources are needed');
 }
 
 const requiredLocales = ['en', 'pt_PT', 'fr', 'es', 'de', 'it'];
@@ -78,6 +82,7 @@ const jsFiles = [
   'src/content/bridge-client.js',
   'src/content/i18n.js',
   'src/content/tokens.js',
+  'src/content/usage.js',
   'src/content/ui.js',
   'src/content/main.js',
   'src/injected/bridge.js',
